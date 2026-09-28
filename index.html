@@ -3,33 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0f14">
+<meta name="theme-color" content="#f8fafc">
 <title>Writeups | tr4itor</title>
-<meta name="description" content="Security research, technical notes and writeups by tr4itor.">
-<link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg">
+<meta name="description" content="Security research and technical writeups by tr4itor.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 <style>
 :root {
-  --bg: #0b0f14;
-  --panel: #10161e;
-  --panel2: #141c26;
-  --border: #222c38;
-  --text: #e6edf3;
-  --muted: #8b98a7;
-  --green: #3fb950;
-  --green-dim: #238636;
-  --blue: #58a6ff;
-  --radius: 12px;
+  --bg: #f8fafc;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --green: #16803c;
+  --green-light: #eaf7ee;
+  --blue: #2563eb;
+  --radius: 10px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -39,8 +42,14 @@ body {
   font-size: 14px;
 }
 
-a { color: inherit; text-decoration: none; }
-button { font: inherit; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
 
 .topbar {
   height: 64px;
@@ -49,11 +58,11 @@ button { font: inherit; }
   align-items: center;
   justify-content: space-between;
   padding: 0 30px;
-  background: rgba(11,15,20,.94);
+  background: rgba(255,255,255,.95);
   position: sticky;
   top: 0;
   z-index: 10;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
 }
 
 .brand {
@@ -68,15 +77,18 @@ button { font: inherit; }
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: #14241b;
-  border: 1px solid #285b39;
+  background: var(--green-light);
+  border: 1px solid #ccebd4;
   color: var(--green);
   display: grid;
   place-items: center;
   font: 600 18px "JetBrains Mono", monospace;
 }
 
-.brand span { color: var(--muted); font-weight: 400; }
+.brand span {
+  color: var(--muted);
+  font-weight: 400;
+}
 
 .top-links {
   display: flex;
@@ -85,13 +97,16 @@ button { font: inherit; }
   align-items: center;
 }
 
-.top-links a:hover { color: var(--text); }
+.top-links a:hover {
+  color: var(--text);
+}
 
 .github-link {
   border: 1px solid var(--border);
   padding: 8px 13px;
   border-radius: 8px;
   color: var(--text);
+  background: white;
 }
 
 .layout {
@@ -105,11 +120,11 @@ button { font: inherit; }
 .sidebar {
   border-right: 1px solid var(--border);
   padding: 25px 17px;
-  background: #0d1218;
+  background: var(--sidebar);
 }
 
 .side-heading {
-  color: #758293;
+  color: #94a3b8;
   font-size: 11px;
   letter-spacing: 1.3px;
   font-weight: 700;
@@ -123,162 +138,123 @@ button { font: inherit; }
   gap: 10px;
   border: 0;
   background: transparent;
-  color: #aab5c1;
+  color: #64748b;
   padding: 10px 11px;
   border-radius: 7px;
   text-align: left;
   cursor: pointer;
   font-size: 13px;
   margin: 2px 0;
+  transition: background .15s, color .15s;
 }
 
 .nav-item:hover {
-  background: #161e28;
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .nav-item.active {
-  background: #17271e;
-  color: #6ee787;
+  background: var(--green-light);
+  color: var(--green);
   box-shadow: inset 2px 0 var(--green);
+  font-weight: 600;
 }
 
 .nav-icon {
   width: 17px;
   text-align: center;
-  color: #81909e;
+  color: #94a3b8;
+  font-size: 15px;
 }
 
-.nav-item.active .nav-icon { color: var(--green); }
-
-.nav-count {
-  margin-left: auto;
-  color: #748091;
-  font: 11px "JetBrains Mono", monospace;
+.nav-item.active .nav-icon {
+  color: var(--green);
 }
 
-.sidebar-bottom {
-  border-top: 1px solid var(--border);
-  margin-top: 30px;
-  padding: 17px 10px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
+.sidebar-section {
+  margin-top: 28px;
 }
 
-.status-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  margin-right: 7px;
-  box-shadow: 0 0 9px #3fb95077;
+.mobile-menu {
+  display: none;
 }
 
 main {
   min-width: 0;
-  padding: 35px 48px 70px;
+  padding: 45px 48px 70px;
 }
 
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 39px 40px;
-  border: 1px solid #283b32;
-  border-radius: 15px;
+  padding: 55px 48px;
+  border: 1px solid #dce9df;
+  border-radius: 14px;
   background:
-    radial-gradient(ellipse at 90% 10%, #1b422a66, transparent 45%),
-    linear-gradient(135deg, #111c18, #10161e 65%);
-}
-
-.hero::after {
-  content: "</>";
-  position: absolute;
-  right: 40px;
-  top: 25px;
-  font: 800 90px "JetBrains Mono", monospace;
-  color: #3fb950;
-  opacity: .08;
-  transform: rotate(-10deg);
-  pointer-events: none;
+    radial-gradient(ellipse at 90% 10%, #dff4e5, transparent 50%),
+    linear-gradient(135deg, #ffffff, #f3faf5);
 }
 
 .eyebrow {
   color: var(--green);
-  font: 500 11px "JetBrains Mono", monospace;
+  font: 600 11px "JetBrains Mono", monospace;
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
 
 .hero h1 {
-  font-size: clamp(30px, 4vw, 45px);
+  font-size: clamp(32px, 5vw, 49px);
   line-height: 1.15;
   letter-spacing: -1.8px;
-  margin: 17px 0 12px;
+  margin: 19px 0 17px;
+  color: #17251c;
 }
 
-.hero h1 span { color: var(--green); }
+.hero h1 span {
+  color: var(--green);
+}
 
 .hero p {
-  max-width: 520px;
-  color: #a3b0bc;
+  max-width: 550px;
+  color: #64748b;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.9;
   margin: 0;
 }
 
 .hero-actions {
   display: flex;
   gap: 10px;
-  margin-top: 25px;
+  margin-top: 27px;
   flex-wrap: wrap;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 15px;
+  padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
   font-size: 12px;
   border: 1px solid var(--border);
-  background: #171e27;
+  background: white;
   color: var(--text);
   cursor: pointer;
+  transition: .15s;
 }
 
 .btn.primary {
-  background: var(--green-dim);
-  border-color: #299447;
+  background: var(--green);
+  border-color: var(--green);
   color: white;
 }
 
-.btn:hover { filter: brightness(1.15); }
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 13px;
-  margin: 23px 0 35px;
+.btn:hover {
+  filter: brightness(.96);
 }
 
-.stat {
-  padding: 18px 20px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 10px;
-}
-
-.stat-value {
-  font: 600 23px "JetBrains Mono", monospace;
-  margin-bottom: 6px;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: var(--muted);
+.about {
+  margin-top: 38px;
 }
 
 .section-head {
@@ -286,24 +262,41 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 15px;
-  margin: 32px 0 17px;
+  margin: 0 0 18px;
 }
 
 .section-head h2 {
-  font-size: 17px;
+  font-size: 18px;
   margin: 0;
   letter-spacing: -.3px;
 }
 
-.section-head small {
+.about-card {
+  padding: 25px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 11px;
+  line-height: 1.8;
   color: var(--muted);
-  font-size: 11px;
+}
+
+.about-card p {
+  margin: 0 0 15px;
+}
+
+.about-card p:last-child {
+  margin-bottom: 0;
+}
+
+.about-card strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .search {
   width: 100%;
   padding: 11px 14px;
-  background: #10161e;
+  background: white;
   color: var(--text);
   border: 1px solid var(--border);
   outline: none;
@@ -311,56 +304,20 @@ main {
   margin-bottom: 17px;
 }
 
-.search:focus { border-color: #3d8b55; }
-.search::placeholder { color: #687584; }
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 13px;
+.search:focus {
+  border-color: #86c99b;
+  box-shadow: 0 0 0 3px #16803c12;
 }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 17px;
-  min-height: 115px;
-  transition: .18s ease;
-  cursor: pointer;
-  text-align: left;
-  color: var(--text);
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  border-color: #3b8050;
-  background: #131c21;
-}
-
-.card-icon {
-  font-size: 19px;
-  margin-bottom: 13px;
-}
-
-.card-title {
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 6px;
-  overflow-wrap: anywhere;
-}
-
-.card-description {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
+.search::placeholder {
+  color: #94a3b8;
 }
 
 .file-list {
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: var(--panel);
+  background: var(--surface);
 }
 
 .file-row {
@@ -371,13 +328,33 @@ main {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   min-width: 0;
+  transition: background .15s;
 }
 
-.file-row:last-child { border-bottom: 0; }
-.file-row:hover { background: #171f29; }
-.file-row .filename { overflow-wrap: anywhere; }
-.file-row .file-meta {
-  color: var(--muted);
+.file-row:last-child {
+  border-bottom: 0;
+}
+
+.file-row:hover {
+  background: #f8fafc;
+}
+
+.file-icon {
+  color: #94a3b8;
+  font-size: 15px;
+}
+
+.filename {
+  overflow-wrap: anywhere;
+  color: #334155;
+}
+
+.file-row:hover .filename {
+  color: var(--green);
+}
+
+.file-meta {
+  color: #94a3b8;
   margin-left: auto;
   font: 10px "JetBrains Mono", monospace;
   white-space: nowrap;
@@ -387,10 +364,10 @@ main {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 9px;
   color: var(--muted);
   font-size: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .breadcrumb button {
@@ -401,50 +378,75 @@ main {
   cursor: pointer;
 }
 
+.breadcrumb button:hover {
+  text-decoration: underline;
+}
+
 .reader {
-  background: var(--panel);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: clamp(18px, 4vw, 38px);
-  line-height: 1.75;
+  padding: clamp(20px, 4vw, 40px);
+  line-height: 1.8;
   overflow-wrap: anywhere;
 }
 
-.reader h1, .reader h2, .reader h3 {
-  line-height: 1.3;
+.reader h1,
+.reader h2,
+.reader h3 {
+  line-height: 1.35;
   margin-top: 1.5em;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
+  color: #1e293b;
 }
 
-.reader h1:first-child { margin-top: 0; }
-.reader p, .reader li { color: #b8c2ce; }
-.reader a { color: var(--blue); text-decoration: underline; }
-.reader img { max-width: 100%; border-radius: 8px; }
+.reader h1:first-child {
+  margin-top: 0;
+}
+
+.reader p,
+.reader li {
+  color: #475569;
+}
+
+.reader a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
+.reader img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
 .reader pre {
   overflow-x: auto;
   padding: 16px;
-  background: #080d12;
+  background: #f1f5f9;
   border: 1px solid var(--border);
   border-radius: 8px;
   font: 12px "JetBrains Mono", monospace;
 }
+
 .reader code {
   font-family: "JetBrains Mono", monospace;
   font-size: .9em;
 }
+
 .reader :not(pre) > code {
-  background: #1b2731;
-  color: #79d997;
+  background: #f1f5f9;
+  color: #16803c;
   padding: 2px 5px;
   border-radius: 4px;
 }
+
 .reader blockquote {
   margin: 15px 0;
-  padding: 3px 15px;
+  padding: 5px 15px;
   border-left: 3px solid var(--green);
   color: var(--muted);
-  background: #131c21;
+  background: #f8fafc;
 }
 
 .empty {
@@ -453,6 +455,7 @@ main {
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: 10px;
+  background: white;
 }
 
 .loading {
@@ -465,37 +468,53 @@ footer {
   border-top: 1px solid var(--border);
   margin-top: 55px;
   padding-top: 18px;
-  color: #687584;
+  color: #94a3b8;
   font-size: 11px;
   display: flex;
   justify-content: space-between;
   gap: 15px;
 }
 
-.mobile-menu { display: none; }
-
 @media (max-width: 800px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     display: none;
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
-  .sidebar.open { display: block; }
-  main { padding: 25px 20px 50px; }
-  .topbar { padding: 0 18px; }
-  .mobile-menu { display: inline-flex; }
-  .hero { padding: 30px 24px; }
-  .hero::after { right: 12px; font-size: 60px; }
+
+  .sidebar.open {
+    display: block;
+  }
+
+  main {
+    padding: 25px 20px 50px;
+  }
+
+  .topbar {
+    padding: 0 18px;
+  }
+
+  .mobile-menu {
+    display: inline-flex;
+  }
+
+  .hero {
+    padding: 35px 25px;
+  }
 }
 
 @media (max-width: 480px) {
-  .top-links a:not(.github-link) { display: none; }
-  .stats { gap: 7px; }
-  .stat { padding: 13px 10px; }
-  .stat-value { font-size: 19px; }
-  .stat-label { font-size: 10px; }
-  .cards { grid-template-columns: 1fr 1fr; }
+  .top-links a:not(.github-link) {
+    display: none;
+  }
+
+  .hero h1 {
+    letter-spacing: -1px;
+  }
 }
 </style>
 </head>
@@ -506,35 +525,30 @@ footer {
     <div class="logo">T</div>
     tr4itor <span>/ Writeups</span>
   </div>
+
   <nav class="top-links">
-    <a href="https://github.com/tr4itor">Profile</a>
-    <a href="https://github.com/tr4itor/Writeups">Repository</a>
+    <a href="https://github.com/tr4itor">GitHub Profile</a>
     <a class="github-link" href="https://github.com/tr4itor/Writeups">
-      ↗ GitHub
+      GitHub
     </a>
-    <button class="btn mobile-menu" onclick="toggleMenu()">☰</button>
+    <button class="btn mobile-menu" onclick="toggleMenu()">Menu</button>
   </nav>
 </header>
 
 <div class="layout">
   <aside class="sidebar" id="sidebar">
-    <div class="side-heading">NAVIGATION</div>
+    <div class="side-heading">MENU</div>
+
     <button class="nav-item active" id="homeNav" onclick="showHome()">
-      <span class="nav-icon">⌂</span> Overview
-    </button>
-    <button class="nav-item" onclick="loadGeneral()">
-      <span class="nav-icon">▦</span> General
-      <span class="nav-count" id="folderCount">...</span>
+      <span class="nav-icon">⌂</span>
+      About me
     </button>
 
-    <div class="side-heading" style="margin-top:30px">GENERAL FOLDERS</div>
-    <div id="folderNav">
-      <div class="loading">Loading folders...</div>
-    </div>
-
-    <div class="sidebar-bottom">
-      <div><span class="status-dot"></span> Repository connected</div>
-      <div>github.com/tr4itor/Writeups</div>
+    <div class="sidebar-section">
+      <div class="side-heading">CATEGORIES</div>
+      <div id="folderNav">
+        <div class="loading">Loading...</div>
+      </div>
     </div>
   </aside>
 
@@ -542,49 +556,48 @@ footer {
     <div id="content">
       <section class="hero">
         <div class="eyebrow">Personal knowledge base</div>
-        <h1>Security <span>Writeups.</span></h1>
+        <h1>Hi, I'm <span>tr4itor.</span></h1>
         <p>
-          A collection of technical writeups, security research,
-          walkthroughs and notes. Documenting what I learn,
-          one challenge at a time.
+          Welcome to my personal writeups collection.
+          Here I document my research, technical discoveries
+          and knowledge in cybersecurity.
         </p>
         <div class="hero-actions">
-          <button class="btn primary" onclick="loadGeneral()">
-            Browse writeups →
-          </button>
+          <a class="btn primary" href="https://github.com/tr4itor">
+            GitHub Profile
+          </a>
           <a class="btn" href="https://github.com/tr4itor/Writeups">
-            View repository ↗
+            View Writeups
           </a>
         </div>
       </section>
 
-      <section class="stats">
-        <div class="stat">
-          <div class="stat-value" id="statFolders">—</div>
-          <div class="stat-label">Categories</div>
+      <section class="about">
+        <div class="section-head">
+          <h2>About me</h2>
         </div>
-        <div class="stat">
-          <div class="stat-value" id="statFiles">—</div>
-          <div class="stat-label">Writeups</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value">01</div>
-          <div class="stat-label">Repository</div>
+        <div class="about-card">
+          <p>
+            Hello! I'm <strong>tr4itor</strong>.
+            This website is my personal space for documenting
+            technical knowledge and research.
+          </p>
+          <p>
+            I use this collection to organize writeups,
+            keep track of what I've learned and share
+            technical notes.
+          </p>
+          <p>
+            The categories in the sidebar contain my writeups
+            and other materials.
+          </p>
         </div>
       </section>
-
-      <div class="section-head">
-        <h2>Explore categories</h2>
-        <small>GENERAL</small>
-      </div>
-      <div class="cards" id="homeFolders">
-        <div class="loading">Loading categories...</div>
-      </div>
     </div>
 
     <footer>
       <span>© 2026 tr4itor</span>
-      <span>Built for learning & research.</span>
+      <span>Personal Writeups</span>
     </footer>
   </main>
 </div>
@@ -597,11 +610,13 @@ const BASE = `https://api.github.com/repos/${OWNER}/${REPO}/contents`;
 const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
 
 let folders = [];
-let allFiles = [];
-let currentPath = "general";
+let currentDirs = [];
+let currentFiles = [];
 
 async function api(path = "") {
-  const response = await fetch(`${BASE}/${path}?ref=${BRANCH}`);
+  const response = await fetch(
+    `${BASE}/${path}?ref=${BRANCH}`
+  );
   if (!response.ok) {
     throw new Error(`GitHub API error: ${response.status}`);
   }
@@ -613,6 +628,22 @@ function prettyName(name) {
     .replace(/\.md$/i, "")
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[c]);
+}
+
+function escapeAttr(value) {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'");
 }
 
 function setActive(button) {
@@ -628,132 +659,100 @@ function toggleMenu() {
 
 function showHome() {
   setActive(document.getElementById("homeNav"));
+
   document.getElementById("content").innerHTML = `
     <section class="hero">
       <div class="eyebrow">Personal knowledge base</div>
-      <h1>Security <span>Writeups.</span></h1>
-      <p>A collection of technical writeups, security research,
-      walkthroughs and notes. Documenting what I learn,
-      one challenge at a time.</p>
+      <h1>Hi, I'm <span>tr4itor.</span></h1>
+      <p>
+        Welcome to my personal writeups collection.
+        Here I document my research, technical discoveries
+        and knowledge in cybersecurity.
+      </p>
       <div class="hero-actions">
-        <button class="btn primary" onclick="loadGeneral()">Browse writeups →</button>
-        <a class="btn" href="https://github.com/${OWNER}/${REPO}">View repository ↗</a>
+        <a class="btn primary" href="https://github.com/tr4itor">
+          GitHub Profile
+        </a>
+        <a class="btn" href="https://github.com/tr4itor/Writeups">
+          View Writeups
+        </a>
       </div>
     </section>
-    <section class="stats">
-      <div class="stat"><div class="stat-value">${folders.length}</div><div class="stat-label">Categories</div></div>
-      <div class="stat"><div class="stat-value">${allFiles.length}</div><div class="stat-label">Writeups</div></div>
-      <div class="stat"><div class="stat-value">01</div><div class="stat-label">Repository</div></div>
+
+    <section class="about">
+      <div class="section-head"><h2>About me</h2></div>
+      <div class="about-card">
+        <p>
+          Hello! I'm <strong>tr4itor</strong>.
+          This website is my personal space for documenting
+          technical knowledge and research.
+        </p>
+        <p>
+          I use this collection to organize writeups,
+          keep track of what I've learned and share
+          technical notes.
+        </p>
+        <p>
+          The categories in the sidebar contain my writeups
+          and other materials.
+        </p>
+      </div>
     </section>
-    <div class="section-head"><h2>Explore categories</h2><small>GENERAL</small></div>
-    <div class="cards" id="homeFolders"></div>
   `;
-  renderHomeFolders();
-}
-
-function renderHomeFolders() {
-  const container = document.getElementById("homeFolders");
-  if (!container) return;
-  container.innerHTML = folders.length ? folders.map(folder => `
-    <button class="card" onclick="openFolder('${escapeAttr(folder.path)}')">
-      <div class="card-icon">📁</div>
-      <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
-      <div class="card-description">Browse category →</div>
-    </button>
-  `).join("") : `<div class="empty">No folders found.</div>`;
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;",
-    '"': "&quot;", "'": "&#39;"
-  })[c]);
-}
-
-function escapeAttr(value) {
-  return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
 async function init() {
   try {
     const items = await api("general");
-    folders = items.filter(x => x.type === "dir");
-    allFiles = items.filter(x => x.type === "file" && /\.md$/i.test(x.name));
+    folders = items.filter(item => item.type === "dir");
 
-    document.getElementById("folderCount").textContent = folders.length;
-    document.getElementById("statFolders").textContent = folders.length;
-    document.getElementById("statFiles").textContent = allFiles.length;
+    document.getElementById("folderNav").innerHTML =
+      folders.map(folder => `
+        <button class="nav-item"
+          onclick="openFolder('${escapeAttr(folder.path)}', this)">
+          <span class="nav-icon">▣</span>
+          ${escapeHtml(prettyName(folder.name))}
+        </button>
+      `).join("") ||
+      `<div class="empty">No categories found.</div>`;
 
-    document.getElementById("folderNav").innerHTML = folders.map(folder => `
-      <button class="nav-item" onclick="openFolder('${escapeAttr(folder.path)}', this)">
-        <span class="nav-icon">▸</span>
-        ${escapeHtml(prettyName(folder.name))}
-      </button>
-    `).join("") || `<div class="empty">No folders</div>`;
-
-    renderHomeFolders();
   } catch (error) {
     document.getElementById("folderNav").innerHTML =
-      `<div class="card-description">Unable to load folders.</div>`;
-    document.getElementById("homeFolders").innerHTML =
-      `<div class="empty">Could not connect to GitHub API. Try again later.</div>`;
+      `<div class="empty">Unable to load categories.</div>`;
     console.error(error);
   }
 }
 
-function loadGeneral() {
-  setActive(document.querySelectorAll(".nav-item")[1]);
-  document.getElementById("content").innerHTML = `
-    <div class="breadcrumb">Home <span>/</span> General</div>
-    <div class="section-head"><h2>General</h2><small>DIRECTORY</small></div>
-    <input class="search" id="folderSearch" placeholder="Search categories..." oninput="filterFolders(this.value)">
-    <div class="cards" id="folderResults"></div>
-  `;
-  renderFolderResults(folders);
-}
-
-function filterFolders(query) {
-  renderFolderResults(folders.filter(f =>
-    f.name.toLowerCase().includes(query.toLowerCase())
-  ));
-}
-
-function renderFolderResults(items) {
-  const container = document.getElementById("folderResults");
-  if (!container) return;
-  container.innerHTML = items.length ? items.map(folder => `
-    <button class="card" onclick="openFolder('${escapeAttr(folder.path)}')">
-      <div class="card-icon">📁</div>
-      <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
-      <div class="card-description">Open folder →</div>
-    </button>
-  `).join("") : `<div class="empty">No matching folders.</div>`;
-}
-
 async function openFolder(path, button) {
-  currentPath = path;
-  if (button) setActive(button);
+  setActive(button);
+  document.getElementById("sidebar").classList.remove("open");
+
   document.getElementById("content").innerHTML =
     `<div class="loading">Loading directory...</div>`;
 
   try {
     const items = await api(path);
-    const dirs = items.filter(x => x.type === "dir");
-    const files = items.filter(x => x.type === "file");
+    const dirs = items.filter(item => item.type === "dir");
+    const files = items.filter(item => item.type === "file");
+
+    currentDirs = dirs;
+    currentFiles = files;
 
     document.getElementById("content").innerHTML = `
       <div class="breadcrumb">
-        <button onclick="showHome()">Home</button>
-        <span>/</span>
-        <button onclick="loadGeneral()">General</button>
+        <button onclick="showHome()">About me</button>
         <span>/</span>
         <span>${escapeHtml(prettyName(path.split("/").pop()))}</span>
       </div>
+
       <div class="section-head">
-        <h2>📁 ${escapeHtml(prettyName(path.split("/").pop()))}</h2>
-        <small>${dirs.length} FOLDERS · ${files.length} FILES</small>
+        <h2>${escapeHtml(prettyName(path.split("/").pop()))}</h2>
       </div>
-      <input class="search" placeholder="Search files..." oninput="filterFiles(this.value)">
+
+      <input class="search"
+        placeholder="Search files..."
+        oninput="filterFiles(this.value)">
+
       <div id="directoryResults"></div>
     `;
 
@@ -765,43 +764,48 @@ async function openFolder(path, button) {
   }
 }
 
-let currentDirs = [];
-let currentFiles = [];
-
 function renderDirectory(dirs, files) {
-  currentDirs = dirs;
-  currentFiles = files;
   const container = document.getElementById("directoryResults");
   if (!container) return;
 
   const dirHTML = dirs.map(folder => `
-    <button class="card" onclick="openFolder('${escapeAttr(folder.path)}')">
-      <div class="card-icon">📁</div>
-      <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
-      <div class="card-description">Directory →</div>
-    </button>
+    <div class="file-row"
+      onclick="openFolder('${escapeAttr(folder.path)}')">
+      <span class="file-icon">▣</span>
+      <span class="filename">${escapeHtml(prettyName(folder.name))}</span>
+    </div>
   `).join("");
 
   const fileHTML = files.map(file => `
-    <div class="file-row" onclick="openFile('${escapeAttr(file.path)}')">
-      <span>${/\.md$/i.test(file.name) ? "📄" : "📎"}</span>
+    <div class="file-row"
+      onclick="openFile('${escapeAttr(file.path)}')">
+      <span class="file-icon">▤</span>
       <span class="filename">${escapeHtml(file.name)}</span>
-      <span class="file-meta">${file.size ? Math.ceil(file.size / 1024) + " KB" : ""}</span>
     </div>
   `).join("");
 
   container.innerHTML = `
-    ${dirs.length ? `<div class="cards" style="margin-bottom:18px">${dirHTML}</div>` : ""}
+    ${dirs.length ? `
+      <div class="file-list" style="margin-bottom:18px">
+        ${dirHTML}
+      </div>` : ""}
     ${files.length ? `<div class="file-list">${fileHTML}</div>` : ""}
-    ${!dirs.length && !files.length ? `<div class="empty">This directory is empty.</div>` : ""}
+    ${!dirs.length && !files.length
+      ? `<div class="empty">This directory is empty.</div>`
+      : ""}
   `;
 }
 
 function filterFiles(query) {
   const q = query.toLowerCase();
+
   renderDirectory(
-    currentDirs.filter(f => f.name.toLowerCase().includes(q)),
-    currentFiles.filter(f => f.name.toLowerCase().includes(q))
+    currentDirs.filter(file =>
+      file.name.toLowerCase().includes(q)
+    ),
+    currentFiles.filter(file =>
+      file.name.toLowerCase().includes(q)
+    )
   );
 }
 
@@ -810,31 +814,41 @@ async function openFile(path) {
     `<div class="loading">Loading writeup...</div>`;
 
   try {
-    const response = await fetch(`${RAW}/${path.split("/").map(encodeURIComponent).join("/")}`);
-    if (!response.ok) throw new Error("Could not fetch file");
-    const markdown = await response.text();
+    const url = `${RAW}/${path.split("/")
+      .map(encodeURIComponent).join("/")}`;
 
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Could not fetch file");
+
+    const markdown = await response.text();
     const html = marked.parse(markdown, {
       gfm: true,
       breaks: false
     });
 
+    const parent = path.split("/").slice(0, -1).join("/");
+
     document.getElementById("content").innerHTML = `
       <div class="breadcrumb">
-        <button onclick="showHome()">Home</button>
+        <button onclick="showHome()">About me</button>
         <span>/</span>
-        <button onclick="loadGeneral()">General</button>
-        <span>/</span>
-        <button onclick="openFolder('${escapeAttr(path.split("/").slice(0,-1).join("/"))}')">
-          ${escapeHtml(prettyName(path.split("/").slice(-2,-1)[0] || "General"))}
+        <button onclick="openFolder('${escapeAttr(parent)}')">
+          ${escapeHtml(prettyName(parent.split("/").pop()))}
         </button>
         <span>/</span>
         <span>${escapeHtml(path.split("/").pop())}</span>
       </div>
+
       <div class="section-head">
         <h2>${escapeHtml(prettyName(path.split("/").pop()))}</h2>
-        <a class="btn" href="https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${path.split("/").map(encodeURIComponent).join("/")}" target="_blank" rel="noopener">View source ↗</a>
+        <a class="btn"
+          href="https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${path.split("/")
+            .map(encodeURIComponent).join("/")}"
+          target="_blank" rel="noopener">
+          View source
+        </a>
       </div>
+
       <article class="reader">${html}</article>
     `;
 
