@@ -1,73 +1,74 @@
-**Теги:** OSINT, Hashing, Social Media.
-**Сложность:** Easy.
+**Tags:** OSINT, Hashing, Social Media.
 
-## 1. Получение файла комнаты
+**Difficulty:** Easy.
 
-Для начала получаем архив:
+## 1. Obtaining the Room File
+
+First, we obtain the archive:
 
 ```text
 overheard-at-breakfast-1784259780309.zip
 ```
 
-Внутри архива находится изображение:
+Inside the archive, there is an image:
 
 ```text
 conversation.png
 ```
 
-На изображении представлена переписка между **Понци** и **Ламбо**.
+The image contains a conversation between **Ponzi** and **Lambo**.
 
 ---
 
-## 2. Анализ переписки
+## 2. Analyzing the Conversation
 
-В ходе разговора Понци пытается узнать контакт Ламбо в социальных сетях.
+During the conversation, Ponzi tries to find Lambo's social media contact.
 
-Ламбо сообщает, что сейчас почти не пользуется социальными сетями, однако раньше использовал бесплатный инструмент, который позволял загружать профиль и связывать с ним другие социальные аккаунты.
+Lambo says that he barely uses social media nowadays, but previously used a free tool that allowed users to upload a profile and link other social accounts to it.
 
-Он также говорит:
+He also says:
 
-> «Начиналось, если я правильно помню, с буквы G.»
+> "Started with a G, if I remember correctly."
 
-Кроме того, Ламбо оставляет свой email:
+In addition, Lambo leaves his email address:
 
 ```text
 lambobytelotushotel@gmail.com
 ```
 
-Подсказка с буквой `G` и возможностью связывать профиль с другими аккаунтами позволяет предположить, что речь идёт о **Gravatar**.
+The hint about the letter `G` and the ability to link a profile with other accounts suggests that the service is **Gravatar**.
 
 ---
 
-## 3. Поиск Gravatar по email
+## 3. Searching Gravatar by Email
 
-Gravatar позволяет обращаться к аватару пользователя через MD5-хеш его email.
+Gravatar allows users to access an avatar using the MD5 hash of their email address.
 
-В логе используется следующий формат:
+The format used in the log is:
 
 ```text
-https://www.gravatar.com/avatar/ХЭШ_ОТ_EMAIL
+https://www.gravatar.com/avatar/HASH_OF_EMAIL
 ```
 
-Следовательно, сначала необходимо получить MD5-хеш адреса:
+Therefore, we first need to calculate the MD5 hash of:
 
 ```text
 lambobytelotushotel@gmail.com
 ```
 
-Для этого выполняем:
+We run:
 
 ```bash
 echo -n "lambobytelotushotel@gmail.com" | md5sum
 ```
 
-Получаем хеш:
+We get the hash:
 
 ```text
 d4a5fc5d3128890778667e24617d7cc0
 ```
 
-После этого URL Gravatar будет иметь вид:
+The Gravatar URL will then be:
 
 ```text
 https://www.gravatar.com/avatar/d4a5fc5d3128890778667e24617d7cc0
@@ -75,47 +76,47 @@ https://www.gravatar.com/avatar/d4a5fc5d3128890778667e24617d7cc0
 
 ---
 
-## 4. Поиск профиля
+## 4. Finding the Profile
 
-Используя полученную почту, через holehe находим профиль Gravatar:
+Using the email address, we find the Gravatar profile with holehe:
 
 ```text
 https://gravatar.com/cheerfullysongf28e3c3716
 ```
 
-Профиль принадлежит:
+The profile belongs to:
 
 ```text
 Lambo
 ```
 
-Также в профиле указано:
+The profile also contains:
 
 ```text
 Lam-boh · Byte Lotus Hotel
 ```
 
-Таким образом, подсказка из переписки действительно привела к профилю Ламбо.
+Thus, the hint from the conversation indeed led us to Lambo's profile.
 
 ---
 
-## 5. Получение флага
+## 5. Obtaining the Flag
 
-На найденном профиле присутствует сообщение:
+The discovered profile contains the following message:
 
 ```text
 Funny thing about email hashes, they follow you places you didn't expect. Glad you found the right corner of the internet! Here is your prize: VEhNe1MzY3JlVF9QcjBmaWwzX0g0c19iMzNuX0lkZW50MWZpM2R9
 ```
 
-Полученная строка имеет характерный формат Base64.
+The resulting string has the characteristic format of Base64.
 
-Декодируем:
+We decode:
 
 ```text
 VEhNe1MzY3JlVF9QcjBmaWwzX0g0c19iMzNuX0lkZW50MWZpM2R9
 ```
 
-После декодирования получаем:
+After decoding, we get:
 
 ```text
 THM{S3creT_Pr0fil3_H4s_b33n_Ident1fi3d}
@@ -123,22 +124,22 @@ THM{S3creT_Pr0fil3_H4s_b33n_Ident1fi3d}
 
 ---
 
-## Итог
+## Conclusion
 
-Цепочка решения:
+The solution chain:
 
 ```text
 conversation.png
        │
        ▼
-Переписка Понци и Ламбо
+Conversation between Ponzi and Lambo
        │
        ▼
 Email:
 lambobytelotushotel@gmail.com
        │
        ▼
-Подсказка "начиналось с G"
+Hint "started with G"
        │
        ▼
 Gravatar
@@ -148,10 +149,10 @@ MD5 email
 d4a5fc5d3128890778667e24617d7cc0
        │
        ▼
-Поиск профиля Lambo
+Find Lambo's profile
        │
        ▼
-Base64-строка
+Base64 string
 VEhNe1MzY3JlVF9QcjBmaWwzX0g0c19iMzNuX0lkZW50MWZpM2R9
        │
        ▼
