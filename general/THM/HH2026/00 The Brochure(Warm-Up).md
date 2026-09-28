@@ -1,35 +1,41 @@
-**Теги:** OSINT, Web.
+**Tags:** OSINT, Web.
 
-**Складність:** Easy.
+**Difficulty:** Easy.
 
-### 1. Завантажуємо зображення брошури
-В архіві був файл **thebrochure.png**. 
+### 1. Downloading the brochure image
 
-### 2. Знаходимо прихований акаунт Instagram
-**Команда:**  
-Дивимося на зображення брошури — там є текст «Find us on Instagram».
+The archive contained a file named **thebrochure.png**.
 
-**Результат:**  
-Акаунт — https://www.instagram.com/thebytelotusresort
+### 2. Finding the hidden Instagram account
 
-### 3. Шукаємо прихований зв’язок
-У цього акаунта єдина підписка — https://www.instagram.com/veratheconcierge 
+**Command:**
+We look at the brochure image — it contains the text “Find us on Instagram”.
 
-### 4. Витягуємо прапор за допомогою igviewer.net
-Відкриваємо профіль через сервіс https://igviewer.net/profile/veratheconcierge
+**Result:**
+The account is — [https://www.instagram.com/thebytelotusresort](https://www.instagram.com/thebytelotusresort)
 
-**Результат:**  
-Лише 3 дописи.  
-В описах усіх трьох дописів — частини **Base64** (закодовано частинами)
+### 3. Finding the hidden connection
 
-### 5. Об’єднуємо та декодуємо B64
-```
+This account has only one following — [https://www.instagram.com/veratheconcierge](https://www.instagram.com/veratheconcierge)
+
+### 4. Extracting the flag using igviewer.net
+
+We open the profile through the service [https://igviewer.net/profile/veratheconcierge](https://igviewer.net/profile/veratheconcierge)
+
+**Result:**
+There are only 3 posts.
+The descriptions of all three posts contain parts of **Base64** (encoded in separate parts).
+
+### 5. Combining and decoding B64
+
+```bash
 echo "VEhNe1YzckBzX2FDQzB1bnRfaDRzX2IzM25fZjB1bmQhfQ==" | base64 -d
 ```
 
-**Вивід команди:**
-```
+**Command output:**
+
+```text
 THM{V3r@s_aCC0unt_h4s_b33n_f0und!}
 ```
 
-**Прапор знайдено!**
+**Flag found!**
