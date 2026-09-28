@@ -1,5 +1,4 @@
 # TryHackMe — Startup SpiceHut
-IP: 10.11.111.15 Total time spent in the room: Approximately 100 minutes.
 
 We are tasked with finding a so-called "secret recipe", as well as the `user.txt` and `root.txt` files.
 
@@ -189,7 +188,7 @@ After successfully logging in, we gain access to Lenny's home directory.
 
 There, we find the `user.txt` file.
 
-User flag
+**User flag**
 
 `THM{03ce3d619b80ccbfb3b7fc81e46c0e79}`
 
@@ -252,7 +251,7 @@ We now have root access and can read the final flag.
 cat /root/root.txt
 ```
 
-Root flag
+**Root flag**
 
 `THM{f963aaa6a430f210222158ae15c3d76d}`
 
