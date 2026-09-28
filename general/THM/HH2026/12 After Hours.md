@@ -1,9 +1,10 @@
-**Теги:** Windows, Forensic, Persistence, Reverse Engineering.
-**Сложность:** Medium.
+**Tags:** Windows, Forensic, Persistence, Reverse Engineering.
 
-## Описание задания
+**Difficulty:** Medium.
 
-В ходе расследования был получен дамп репозитория WMI Windows:
+## Task Description
+
+During an investigation, a dump of a Windows WMI repository was obtained:
 
 ```
 INDEX.BTR
@@ -13,22 +14,22 @@ MAPPING2.MAP
 MAPPING3.MAP
 ```
 
-Цель исследования — определить, присутствует ли в репозитории механизм постоянного закрепления (WMI Persistence), и восстановить вредоносную полезную нагрузку (payload).
+The goal of the investigation is to determine whether a persistence mechanism (WMI Persistence) is present in the repository and recover the malicious payload.
 
 ---
 
-# Что такое WMI Repository?
+# What is the WMI Repository?
 
-Windows Management Instrumentation (WMI) хранит свои объекты в специальной базе данных — **Repository**.
+Windows Management Instrumentation (WMI) stores its objects in a special database — **Repository**.
 
-Именно здесь находятся:
+This is where the following are stored:
 
-- пространства имён (Namespaces);
-- классы WMI;
-- экземпляры классов;
-- постоянные подписки на события (Permanent Event Subscriptions).
+* namespaces;
+* WMI classes;
+* class instances;
+* Permanent Event Subscriptions.
 
-Файлы репозитория:
+Repository files:
 
 ```
 INDEX.BTR
@@ -36,31 +37,31 @@ OBJECTS.DATA
 MAPPING*.MAP
 ```
 
-не являются текстовыми и не открываются обычными средствами. Для их анализа необходим специализированный парсер.
+are not text files and cannot be opened with standard tools. A specialized parser is required for analysis.
 
 ---
 
-# Первичный анализ
+# Initial Analysis
 
-Сначала определим тип файлов.
+First, let's determine the file type.
 
 ```bash
 file INDEX.BTR
 ```
 
-Получаем
+We get:
 
 ```
 INDEX.BTR: data
 ```
 
-Попробуем найти печатные строки.
+Let's try to find printable strings.
 
 ```bash
 strings INDEX.BTR | head
 ```
 
-Получаем только несколько внутренних идентификаторов:
+We only get a few internal identifiers:
 
 ```
 CI_41C53E6DB1ACF2453CEFD41398198E613F10DFF47709ECAB1D7F037756AC8CE7
@@ -68,40 +69,40 @@ CI_FD1C1D414B71B5082C266A650E31EF6D5019382724244B685F217C0AAE00A921
 CR_E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
 ```
 
-Полезной информации здесь нет.
+There is no useful information here.
 
 ---
 
-# Попытка использовать готовый инструмент
+# Attempt to Use an Existing Tool
 
-Первоначально был использован проект **WMI_Forensics**.
+Initially, the **WMI_Forensics** project was used.
 
 ```bash
 git clone https://github.com/davidpany/WMI_Forensics
 ```
 
-Запуск:
+Running:
 
 ```bash
 python3 PyWMIPersistenceFinder.py ../OBJECTS.DATA
 ```
 
-завершился ошибкой
+resulted in an error:
 
 ```
 TypeError:
 expected str instance, bytes found
 ```
 
-Причина оказалась достаточно простой.
+The reason turned out to be quite simple.
 
-Проект написан под **Python 2**, а современные версии Python работают с байтовыми строками иначе. Вместо того чтобы исправлять старый код, было решено исследовать репозиторий самостоятельно.
+The project was written for **Python 2**, while modern Python versions handle byte strings differently. Instead of fixing the old code, it was decided to investigate the repository manually.
 
 ---
 
-# Использование библиотеки dissect.cim
+# Using the dissect.cim Library
 
-Для работы с репозиторием была установлена библиотека:
+The following library was installed to work with the repository:
 
 ```bash
 python3 -m venv venv
@@ -110,9 +111,9 @@ source venv/bin/activate
 pip install dissect.cim
 ```
 
-Она предоставляет Python API для чтения WMI Repository.
+It provides a Python API for reading the WMI Repository.
 
-Репозиторий открывается следующим образом:
+The repository can be opened as follows:
 
 ```python
 from dissect.cim import CIM
@@ -128,15 +129,15 @@ repo = CIM(
 )
 ```
 
-Репозиторий успешно загрузился.
+The repository was successfully loaded.
 
 ---
 
-# Перечисление пространств имён
+# Enumerating Namespaces
 
-Первым делом необходимо понять структуру базы.
+First, we need to understand the structure of the database.
 
-Выполнив перечисление Namespace, получили:
+Enumerating the namespaces produced:
 
 ```
 root
@@ -148,27 +149,27 @@ root\WMI
 ...
 ```
 
-Особое внимание сразу привлекает
+The following immediately stands out:
 
 ```
 root\subscription
 ```
 
-Именно здесь Windows хранит механизм **Permanent Event Subscription**, который злоумышленники очень любят использовать для закрепления в системе.
+This is where Windows stores the **Permanent Event Subscription** mechanism, which attackers commonly use for persistence.
 
 ---
 
-# Поиск экземпляров классов
+# Searching for Class Instances
 
-Далее были перечислены все классы, имеющие экземпляры.
+Next, all classes with instances were enumerated.
 
-В пространстве
+The following were found in the
 
 ```
 root\subscription
 ```
 
-обнаружены:
+namespace:
 
 ```
 __EventFilter
@@ -177,13 +178,13 @@ __FilterToConsumerBinding
 NTEventLogEventConsumer
 ```
 
-Это очень характерный набор объектов для WMI Persistence.
+This is a very characteristic set of objects for WMI Persistence.
 
 ---
 
-# Анализ Event Filter
+# Event Filter Analysis
 
-В репозитории найдено два фильтра событий:
+Two event filters were found in the repository:
 
 ```
 EngineTelemetryFilter
@@ -191,25 +192,27 @@ EngineTelemetryFilter
 SCM Event Log Filter
 ```
 
-Фильтр определяет, **при каком событии** будет запускаться полезная нагрузка.
+The filter determines **when** the payload will be executed.
 
 ---
 
-# Анализ Event Consumer
+# Event Consumer Analysis
 
-Также найден объект
+An object named
 
 ```
 EngineTelemetryConsumer
 ```
 
-типа
+of type
 
 ```
 CommandLineEventConsumer
 ```
 
-У данного класса присутствуют свойства
+was also found.
+
+This class contains the following properties:
 
 ```
 CommandLineTemplate
@@ -217,21 +220,23 @@ ExecutablePath
 WorkingDirectory
 ```
 
-Именно свойство **CommandLineTemplate** определяет команду, которая будет выполнена Windows.
+The **CommandLineTemplate** property determines the command that Windows will execute.
 
-По названию объекта уже можно заметить попытку маскировки под системную телеметрию.
+The object name itself already suggests an attempt to disguise it as system telemetry.
 
 ---
 
-# Анализ Filter Binding
+# Filter Binding Analysis
 
-Связь фильтра с потребителем событий хранится в классе
+The relationship between the filter and event consumer is stored in the
 
 ```
 __FilterToConsumerBinding
 ```
 
-В репозитории присутствовала связь
+class.
+
+The repository contained the following relationship:
 
 ```
 SCM Event Log Filter
@@ -239,47 +244,49 @@ SCM Event Log Filter
 NTEventLogEventConsumer
 ```
 
-Она выглядит вполне легитимной.
+It looks completely legitimate.
 
-Однако объект
+However, the
 
 ```
 EngineTelemetryConsumer
 ```
 
-никакой привязки не имел.
+object had no binding.
 
-Это означало, что вредоносная логика спрятана внутри самого Consumer.
+This meant that the malicious logic was hidden inside the Consumer itself.
 
 ---
 
-# Извлечение команды PowerShell
+# Extracting the PowerShell Command
 
-При анализе структуры экземпляра удалось получить содержимое свойства
+While analyzing the instance structure, the contents of the
 
 ```
 CommandLineTemplate
 ```
 
-В нём находилась команда
+property were obtained.
+
+It contained the following command:
 
 ```powershell
 cmd /C powershell.exe -Sta -Nop -Window Hidden -enc <Base64>
 ```
 
-Используются сразу несколько типичных признаков вредоносного PowerShell:
+Several typical indicators of malicious PowerShell are used at once:
 
-* `-Nop` — запуск без пользовательского профиля;
-* `-Window Hidden` — скрытое окно;
-* `-enc` — команда передаётся в Base64.
+* `-Nop` — starts without the user profile;
+* `-Window Hidden` — hides the window;
+* `-enc` — the command is passed as Base64.
 
 ---
 
-# Декодирование PowerShell
+# Decoding PowerShell
 
-Base64 оказался закодирован в UTF-16LE.
+The Base64 was encoded using UTF-16LE.
 
-После декодирования получаем следующий сценарий:
+After decoding, we get the following script:
 
 ```powershell
 $file = ([WmiClass]'ROOT\cimv2:Win32_HardwareTelemetry').Properties['ConfigData'].Value;
@@ -298,31 +305,33 @@ $d = New-Object IO.Compression.DeflateStream(
 
 ---
 
-# Что делает этот PowerShell?
+# What Does This PowerShell Do?
 
-### Шаг 1
+### Step 1
 
-Получает свойство
+It retrieves the
 
 ```
 ConfigData
 ```
 
-из класса
+property from the
 
 ```
 Win32_HardwareTelemetry
 ```
 
-То есть сама полезная нагрузка **не хранится в PowerShell**.
+class.
 
-PowerShell лишь извлекает её из WMI.
+This means the payload itself **is not stored in PowerShell**.
+
+PowerShell only extracts it from WMI.
 
 ---
 
-### Шаг 2
+### Step 2
 
-Содержимое свойства представляет собой
+The contents of the property are represented as
 
 ```
 Base64
@@ -330,9 +339,9 @@ Base64
 
 ---
 
-### Шаг 3
+### Step 3
 
-Полученная строка распаковывается алгоритмом
+The resulting string is decompressed using
 
 ```
 Deflate
@@ -340,15 +349,15 @@ Deflate
 
 ---
 
-### Шаг 4
+### Step 4
 
-Полученный массив байт загружается как
+The resulting byte array is loaded as a
 
 ```
 .NET Assembly
 ```
 
-через
+using:
 
 ```powershell
 Reflection.Assembly.Load()
@@ -356,85 +365,89 @@ Reflection.Assembly.Load()
 
 ---
 
-### Шаг 5
+### Step 5
 
-После загрузки вызывается
+After loading, the
 
 ```
 EntryPoint
 ```
 
-то есть исполняемый файл запускается прямо из памяти.
+is invoked, meaning the executable is launched directly from memory.
 
-На диск он не записывается.
+It is not written to disk.
 
 ---
 
-# Поиск класса Win32_HardwareTelemetry
+# Searching for the Win32_HardwareTelemetry Class
 
-Следующим этапом необходимо было найти класс
+The next step was to find the
 
 ```
 Win32_HardwareTelemetry
 ```
 
-в пространстве
+class in the
 
 ```
 root\CIMV2
 ```
 
-Экземпляров класса обнаружено не было.
+namespace.
 
-Однако удалось исследовать **описание класса (ClassDefinition)**.
+No instances of the class were found.
 
-Внутри него находилось большое бинарное поле.
+However, it was possible to analyze the **ClassDefinition**.
 
-После анализа структуры было найдено свойство
+Inside it was a large binary field.
+
+After analyzing the structure, the following property was found:
 
 ```
 ConfigData
 ```
 
-с типом
+with type
 
 ```
 string
 ```
 
-После него располагалась огромная Base64-строка.
+After it, there was a huge Base64 string.
 
-Именно она и является полезной нагрузкой.
+This is the payload.
 
 ---
 
-# Извлечение полезной нагрузки
+# Extracting the Payload
 
-Из бинарной структуры класса была извлечена строка длиной примерно
+The string was extracted from the binary class structure. It was approximately
 
 ```
-2212 символов
+2212 characters
 ```
 
-Она была сохранена:
+long.
+
+It was saved as:
 
 ```bash
 payload.b64
 ```
 
-После чего декодирована:
+and then decoded:
 
 ```bash
 base64 -d payload.b64 > payload.deflate
 ```
 
-Полученный файл сжат алгоритмом Deflate.
+The resulting file is compressed using Deflate.
 
 ---
 
-# Распаковка Deflate
+# Decompressing Deflate
 
-Небольшой Python-скрипт распаковал поток:
+A small Python script was used to decompress the stream:
 
 ```python
 import zlib
@@ -446,7 +459,7 @@ out = zlib.decompress(data,-15)
 open("payload.bin","wb").write(out)
 ```
 
-После распаковки появился файл
+After decompression, the following file appeared:
 
 ```
 payload.bin
@@ -454,15 +467,15 @@ payload.bin
 
 ---
 
-# Анализ PE-файла
+# PE File Analysis
 
-Определяем тип файла.
+Let's determine the file type.
 
 ```bash
 file payload.bin
 ```
 
-Получаем
+We get:
 
 ```
 PE32 executable
@@ -470,15 +483,15 @@ Intel 80386
 Mono/.NET assembly
 ```
 
-То есть внутри WMI действительно хранилась полноценная .NET-сборка.
+This confirms that a complete .NET assembly was actually stored inside WMI.
 
-Проверка первых байтов подтверждает формат PE:
+Checking the first bytes also confirms the PE format:
 
 ```
 4D 5A
 ```
 
-или
+or
 
 ```
 MZ
@@ -486,23 +499,27 @@ MZ
 
 ---
 
-# Дизассемблирование
+# Disassembly
 
-Для просмотра IL-кода использовалась утилита
+The `monodis` utility was used to view the IL code:
 
 ```bash
 monodis payload.bin > payload.il
 ```
 
-В результате была получена промежуточная сборка (Intermediate Language), пригодная для дальнейшего статического анализа.
+As a result, an Intermediate Language (IL) representation was obtained, suitable for further static analysis.
 
- После всех этапов, результат: THM{P4tch_op3ned_th3_BacKd00r}
- 
+After all the steps, the result is:
+
+```
+THM{P4tch_op3ned_th3_BacKd00r}
+```
+
 ---
 
-# Итоговая схема атаки
+# Final Attack Chain
 
-Вся цепочка работы вредоносного механизма выглядит следующим образом:
+The entire chain of the malicious mechanism looks like this:
 
 ```
 WMI Event
@@ -517,7 +534,7 @@ CommandLineEventConsumer
 PowerShell
       │
       ▼
-Получение ConfigData из WMI
+Retrieving ConfigData from WMI
       │
       ▼
 Base64
@@ -532,6 +549,5 @@ Deflate
 Reflection.Assembly.Load()
       │
       ▼
-Запуск EntryPoint
+EntryPoint Execution
 ```
-
