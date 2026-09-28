@@ -26,7 +26,6 @@
   --green: #3fb950;
   --green-dark: #238636;
   --blue: #58a6ff;
-  --radius: 12px;
 }
 
 * { box-sizing: border-box; }
@@ -160,6 +159,7 @@ main {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 10px 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -177,7 +177,14 @@ main {
   color: white;
 }
 
-.btn:hover { filter: brightness(1.15); }
+.btn:hover {
+  filter: brightness(1.15);
+}
+
+.btn.back {
+  background: var(--panel);
+  margin-bottom: 22px;
+}
 
 .about {
   margin-top: 35px;
@@ -313,8 +320,9 @@ main {
 .file-row:hover .filename { color: var(--green); }
 
 .file-icon {
-  color: #81909e;
-  font-size: 14px;
+  color: var(--green);
+  font: 600 14px "JetBrains Mono", monospace;
+  min-width: 16px;
 }
 
 .filename {
@@ -517,11 +525,10 @@ const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
 let folders = [];
 let currentDirs = [];
 let currentFiles = [];
+let navigation = [];
 
 async function api(path = "") {
-  const response = await fetch(
-    `${BASE}/${path}?ref=${BRANCH}`
-  );
+  const response = await fetch(`${BASE}/${path}?ref=${BRANCH}`);
   if (!response.ok) {
     throw new Error(`GitHub API error: ${response.status}`);
   }
@@ -551,7 +558,27 @@ function escapeAttr(value) {
     .replace(/'/g, "\\'");
 }
 
+function saveNavigation(type, path = "") {
+  navigation.push({ type, path });
+}
+
+function goBack() {
+  if (navigation.length > 1) {
+    navigation.pop();
+    const previous = navigation[navigation.length - 1];
+    renderPage(previous, false);
+  } else {
+    showHome();
+  }
+}
+
 function showHome() {
+  navigation = [{ type: "home", path: "" }];
+  renderHome();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderHome() {
   document.getElementById("content").innerHTML = `
     <section class="hero">
       <div class="eyebrow">Personal knowledge base</div>
@@ -599,7 +626,6 @@ function showHome() {
     </section>
   `;
   renderHomeFolders();
-  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderHomeFolders() {
@@ -610,7 +636,7 @@ function renderHomeFolders() {
     ? folders.map(folder => `
       <button class="card"
         onclick="openFolder('${escapeAttr(folder.path)}')">
-        <div class="card-icon">#</div>
+        <div class="card-icon">$</div>
         <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
         <div class="card-description">Open category</div>
       </button>
@@ -630,9 +656,12 @@ async function init() {
   }
 }
 
-async function openFolder(path) {
+async function openFolder(path, addHistory = true) {
+  if (addHistory) saveNavigation("folder", path);
+
   document.getElementById("content").innerHTML =
-    `<div class="loading">Loading directory...</div>`;
+    `<button class="btn back" onclick="goBack()">Back</button>
+     <div class="loading">Loading directory...</div>`;
 
   try {
     const items = await api(path);
@@ -643,8 +672,10 @@ async function openFolder(path) {
     currentFiles = files;
 
     document.getElementById("content").innerHTML = `
+      <button class="btn back" onclick="goBack()">Back</button>
+
       <div class="breadcrumb">
-        <button onclick="showHome()">Home</button>
+        <span>General</span>
         <span>/</span>
         <span>${escapeHtml(prettyName(path.split("/").pop()))}</span>
       </div>
@@ -663,8 +694,10 @@ async function openFolder(path) {
     renderDirectory(dirs, files);
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
-    document.getElementById("content").innerHTML =
-      `<div class="empty">Unable to load this directory.</div>`;
+    document.getElementById("content").innerHTML = `
+      <button class="btn back" onclick="goBack()">Back</button>
+      <div class="empty">Unable to load this directory.</div>
+    `;
     console.error(error);
   }
 }
@@ -676,7 +709,7 @@ function renderDirectory(dirs, files) {
   const dirHTML = dirs.map(folder => `
     <button class="card"
       onclick="openFolder('${escapeAttr(folder.path)}')">
-      <div class="card-icon">#</div>
+      <div class="card-icon">$</div>
       <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
       <div class="card-description">Open folder</div>
     </button>
@@ -685,7 +718,7 @@ function renderDirectory(dirs, files) {
   const fileHTML = files.map(file => `
     <div class="file-row"
       onclick="openFile('${escapeAttr(file.path)}')">
-      <span class="file-icon">▤</span>
+      <span class="file-icon">$</span>
       <span class="filename">${escapeHtml(file.name)}</span>
     </div>
   `).join("");
@@ -711,9 +744,13 @@ function filterFiles(query) {
   );
 }
 
-async function openFile(path) {
-  document.getElementById("content").innerHTML =
-    `<div class="loading">Loading writeup...</div>`;
+async function openFile(path, addHistory = true) {
+  if (addHistory) saveNavigation("file", path);
+
+  document.getElementById("content").innerHTML = `
+    <button class="btn back" onclick="goBack()">Back</button>
+    <div class="loading">Loading writeup...</div>
+  `;
 
   try {
     const url = `${RAW}/${path.split("/")
@@ -731,12 +768,12 @@ async function openFile(path) {
     const parent = path.split("/").slice(0, -1).join("/");
 
     document.getElementById("content").innerHTML = `
+      <button class="btn back" onclick="goBack()">Back</button>
+
       <div class="breadcrumb">
-        <button onclick="showHome()">Home</button>
+        <span>General</span>
         <span>/</span>
-        <button onclick="openFolder('${escapeAttr(parent)}')">
-          ${escapeHtml(prettyName(parent.split("/").pop()))}
-        </button>
+        <span>${escapeHtml(prettyName(parent.split("/").pop()))}</span>
         <span>/</span>
         <span>${escapeHtml(path.split("/").pop())}</span>
       </div>
@@ -760,9 +797,21 @@ async function openFile(path) {
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
-    document.getElementById("content").innerHTML =
-      `<div class="empty">Unable to open this file.</div>`;
+    document.getElementById("content").innerHTML = `
+      <button class="btn back" onclick="goBack()">Back</button>
+      <div class="empty">Unable to open this file.</div>
+    `;
     console.error(error);
+  }
+}
+
+async function renderPage(page, addHistory = false) {
+  if (page.type === "home") {
+    renderHome();
+  } else if (page.type === "folder") {
+    await openFolder(page.path, addHistory);
+  } else if (page.type === "file") {
+    await openFile(page.path, addHistory);
   }
 }
 
