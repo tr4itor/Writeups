@@ -1,11 +1,7 @@
 **Tags:** Web, Boot2Root.
+
 **Difficulty:** Easy.
 
-**IP:**
-
-```text
-10.113.161.208
-```
 
 ## 1. Finding Credentials in the Source Code
 
