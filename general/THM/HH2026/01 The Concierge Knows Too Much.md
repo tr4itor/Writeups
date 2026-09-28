@@ -1,6 +1,8 @@
-**Теги:** AI, Prompt Injection.
-**Сложность:** Very Easy.
+**Tags:** AI, Prompt Injection.
+**Difficulty:** Very Easy.
 
-Заданием стало стать одним из VIP гостей, а VIP гости уже имеют доступ к флагу.
+The objective was to become one of the VIP guests, as VIP guests already have access to the flag.
 
+```text
 THM{v3r4_kn0ws_t00_much!}
+```
