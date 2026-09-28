@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f8fafc">
+<meta name="theme-color" content="#0b0f14">
 <title>Writeups | tr4itor</title>
 <meta name="description" content="Security research and technical writeups by tr4itor.">
 
@@ -12,27 +12,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 <style>
 :root {
-  --bg: #f8fafc;
-  --sidebar: #ffffff;
-  --surface: #ffffff;
-  --surface-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --muted: #64748b;
-  --green: #16803c;
-  --green-light: #eaf7ee;
-  --blue: #2563eb;
-  --radius: 10px;
+  --bg: #0b0f14;
+  --panel: #10161e;
+  --panel-hover: #151e28;
+  --border: #222c38;
+  --text: #e6edf3;
+  --muted: #8b98a7;
+  --green: #3fb950;
+  --green-dark: #238636;
+  --blue: #58a6ff;
+  --radius: 12px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -42,14 +39,8 @@ body {
   font-size: 14px;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  font: inherit;
-}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
 
 .topbar {
   height: 64px;
@@ -58,11 +49,11 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 0 30px;
-  background: rgba(255,255,255,.95);
+  background: rgba(11,15,20,.94);
   position: sticky;
   top: 0;
   z-index: 10;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
 }
 
 .brand {
@@ -77,8 +68,8 @@ button {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: var(--green-light);
-  border: 1px solid #ccebd4;
+  background: #14241b;
+  border: 1px solid #285b39;
   color: var(--green);
   display: grid;
   place-items: center;
@@ -97,107 +88,47 @@ button {
   align-items: center;
 }
 
-.top-links a:hover {
-  color: var(--text);
-}
+.top-links a:hover { color: var(--text); }
 
 .github-link {
   border: 1px solid var(--border);
   padding: 8px 13px;
   border-radius: 8px;
   color: var(--text);
-  background: white;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  max-width: 1500px;
-  margin: auto;
-  min-height: calc(100vh - 64px);
-}
-
-.sidebar {
-  border-right: 1px solid var(--border);
-  padding: 25px 17px;
-  background: var(--sidebar);
-}
-
-.side-heading {
-  color: #94a3b8;
-  font-size: 11px;
-  letter-spacing: 1.3px;
-  font-weight: 700;
-  margin: 8px 10px 13px;
-}
-
-.nav-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  padding: 10px 11px;
-  border-radius: 7px;
-  text-align: left;
-  cursor: pointer;
-  font-size: 13px;
-  margin: 2px 0;
-  transition: background .15s, color .15s;
-}
-
-.nav-item:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-
-.nav-item.active {
-  background: var(--green-light);
-  color: var(--green);
-  box-shadow: inset 2px 0 var(--green);
-  font-weight: 600;
-}
-
-.nav-icon {
-  width: 17px;
-  text-align: center;
-  color: #94a3b8;
-  font-size: 15px;
-}
-
-.nav-item.active .nav-icon {
-  color: var(--green);
-}
-
-.sidebar-section {
-  margin-top: 28px;
-}
-
-.mobile-menu {
-  display: none;
 }
 
 main {
-  min-width: 0;
-  padding: 45px 48px 70px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 55px 30px 70px;
 }
 
 .hero {
   position: relative;
   overflow: hidden;
   padding: 55px 48px;
-  border: 1px solid #dce9df;
-  border-radius: 14px;
+  border: 1px solid #283b32;
+  border-radius: 15px;
   background:
-    radial-gradient(ellipse at 90% 10%, #dff4e5, transparent 50%),
-    linear-gradient(135deg, #ffffff, #f3faf5);
+    radial-gradient(ellipse at 90% 10%, #1b422a66, transparent 45%),
+    linear-gradient(135deg, #111c18, #10161e 65%);
+}
+
+.hero::after {
+  content: "</>";
+  position: absolute;
+  right: 40px;
+  top: 25px;
+  font: 800 90px "JetBrains Mono", monospace;
+  color: var(--green);
+  opacity: .08;
+  transform: rotate(-10deg);
+  pointer-events: none;
 }
 
 .eyebrow {
   color: var(--green);
-  font: 600 11px "JetBrains Mono", monospace;
+  font: 500 11px "JetBrains Mono", monospace;
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
@@ -207,16 +138,13 @@ main {
   line-height: 1.15;
   letter-spacing: -1.8px;
   margin: 19px 0 17px;
-  color: #17251c;
 }
 
-.hero h1 span {
-  color: var(--green);
-}
+.hero h1 span { color: var(--green); }
 
 .hero p {
   max-width: 550px;
-  color: #64748b;
+  color: #a3b0bc;
   font-size: 14px;
   line-height: 1.9;
   margin: 0;
@@ -237,24 +165,22 @@ main {
   font-weight: 600;
   font-size: 12px;
   border: 1px solid var(--border);
-  background: white;
+  background: #171e27;
   color: var(--text);
   cursor: pointer;
   transition: .15s;
 }
 
 .btn.primary {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--green-dark);
+  border-color: #299447;
   color: white;
 }
 
-.btn:hover {
-  filter: brightness(.96);
-}
+.btn:hover { filter: brightness(1.15); }
 
 .about {
-  margin-top: 38px;
+  margin-top: 35px;
 }
 
 .section-head {
@@ -271,53 +197,105 @@ main {
   letter-spacing: -.3px;
 }
 
+.section-head small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .about-card {
-  padding: 25px;
+  padding: 23px 25px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--panel);
   border-radius: 11px;
   line-height: 1.8;
+  color: #a3b0bc;
+}
+
+.about-card p { margin: 0 0 12px; }
+.about-card p:last-child { margin-bottom: 0; }
+.about-card strong { color: var(--text); }
+
+.categories {
+  margin-top: 48px;
+}
+
+.category-description {
   color: var(--muted);
+  font-size: 12px;
+  margin: -8px 0 20px;
 }
 
-.about-card p {
-  margin: 0 0 15px;
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 
-.about-card p:last-child {
-  margin-bottom: 0;
-}
-
-.about-card strong {
+.card {
+  display: block;
+  width: 100%;
+  text-align: left;
   color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  min-height: 130px;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #3b8050;
+  background: var(--panel-hover);
+}
+
+.card-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid #285b39;
+  background: #14241b;
+  color: var(--green);
+  font: 600 17px "JetBrains Mono", monospace;
+  margin-bottom: 16px;
+}
+
+.card-title {
   font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 7px;
+  overflow-wrap: anywhere;
+}
+
+.card-description {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .search {
   width: 100%;
-  padding: 11px 14px;
-  background: white;
+  padding: 12px 14px;
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   outline: none;
   border-radius: 8px;
-  margin-bottom: 17px;
+  margin-bottom: 18px;
 }
 
-.search:focus {
-  border-color: #86c99b;
-  box-shadow: 0 0 0 3px #16803c12;
-}
-
-.search::placeholder {
-  color: #94a3b8;
-}
+.search:focus { border-color: #3d8b55; }
+.search::placeholder { color: #687584; }
 
 .file-list {
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
-  background: var(--surface);
+  background: var(--panel);
 }
 
 .file-row {
@@ -328,36 +306,20 @@ main {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   min-width: 0;
-  transition: background .15s;
 }
 
-.file-row:last-child {
-  border-bottom: 0;
-}
-
-.file-row:hover {
-  background: #f8fafc;
-}
+.file-row:last-child { border-bottom: 0; }
+.file-row:hover { background: var(--panel-hover); }
+.file-row:hover .filename { color: var(--green); }
 
 .file-icon {
-  color: #94a3b8;
-  font-size: 15px;
+  color: #81909e;
+  font-size: 14px;
 }
 
 .filename {
   overflow-wrap: anywhere;
-  color: #334155;
-}
-
-.file-row:hover .filename {
-  color: var(--green);
-}
-
-.file-meta {
-  color: #94a3b8;
-  margin-left: auto;
-  font: 10px "JetBrains Mono", monospace;
-  white-space: nowrap;
+  color: var(--text);
 }
 
 .breadcrumb {
@@ -367,7 +329,7 @@ main {
   gap: 9px;
   color: var(--muted);
   font-size: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 25px;
 }
 
 .breadcrumb button {
@@ -378,12 +340,10 @@ main {
   cursor: pointer;
 }
 
-.breadcrumb button:hover {
-  text-decoration: underline;
-}
+.breadcrumb button:hover { text-decoration: underline; }
 
 .reader {
-  background: var(--surface);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: clamp(20px, 4vw, 40px);
@@ -391,39 +351,22 @@ main {
   overflow-wrap: anywhere;
 }
 
-.reader h1,
-.reader h2,
-.reader h3 {
+.reader h1, .reader h2, .reader h3 {
   line-height: 1.35;
   margin-top: 1.5em;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
-  color: #1e293b;
 }
 
-.reader h1:first-child {
-  margin-top: 0;
-}
-
-.reader p,
-.reader li {
-  color: #475569;
-}
-
-.reader a {
-  color: var(--blue);
-  text-decoration: underline;
-}
-
-.reader img {
-  max-width: 100%;
-  border-radius: 8px;
-}
+.reader h1:first-child { margin-top: 0; }
+.reader p, .reader li { color: #b8c2ce; }
+.reader a { color: var(--blue); text-decoration: underline; }
+.reader img { max-width: 100%; border-radius: 8px; }
 
 .reader pre {
   overflow-x: auto;
   padding: 16px;
-  background: #f1f5f9;
+  background: #080d12;
   border: 1px solid var(--border);
   border-radius: 8px;
   font: 12px "JetBrains Mono", monospace;
@@ -435,8 +378,8 @@ main {
 }
 
 .reader :not(pre) > code {
-  background: #f1f5f9;
-  color: #16803c;
+  background: #1b2731;
+  color: #79d997;
   padding: 2px 5px;
   border-radius: 4px;
 }
@@ -446,7 +389,7 @@ main {
   padding: 5px 15px;
   border-left: 3px solid var(--green);
   color: var(--muted);
-  background: #f8fafc;
+  background: #131c21;
 }
 
 .empty {
@@ -455,7 +398,6 @@ main {
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: 10px;
-  background: white;
 }
 
 .loading {
@@ -468,53 +410,26 @@ footer {
   border-top: 1px solid var(--border);
   margin-top: 55px;
   padding-top: 18px;
-  color: #94a3b8;
+  color: #687584;
   font-size: 11px;
   display: flex;
   justify-content: space-between;
   gap: 15px;
 }
 
-@media (max-width: 800px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    display: none;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar.open {
-    display: block;
-  }
-
-  main {
-    padding: 25px 20px 50px;
-  }
-
-  .topbar {
-    padding: 0 18px;
-  }
-
-  .mobile-menu {
-    display: inline-flex;
-  }
-
-  .hero {
-    padding: 35px 25px;
-  }
+@media (max-width: 600px) {
+  main { padding: 25px 18px 50px; }
+  .topbar { padding: 0 18px; }
+  .hero { padding: 35px 25px; }
+  .hero::after { right: 12px; font-size: 60px; }
+  .hero h1 { letter-spacing: -1px; }
+  .cards { grid-template-columns: 1fr 1fr; }
+  .top-links { gap: 12px; }
+  .top-links a:first-child { display: none; }
 }
 
-@media (max-width: 480px) {
-  .top-links a:not(.github-link) {
-    display: none;
-  }
-
-  .hero h1 {
-    letter-spacing: -1px;
-  }
+@media (max-width: 380px) {
+  .cards { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -531,76 +446,66 @@ footer {
     <a class="github-link" href="https://github.com/tr4itor/Writeups">
       GitHub
     </a>
-    <button class="btn mobile-menu" onclick="toggleMenu()">Menu</button>
   </nav>
 </header>
 
-<div class="layout">
-  <aside class="sidebar" id="sidebar">
-    <div class="side-heading">MENU</div>
-
-    <button class="nav-item active" id="homeNav" onclick="showHome()">
-      <span class="nav-icon">⌂</span>
-      About me
-    </button>
-
-    <div class="sidebar-section">
-      <div class="side-heading">CATEGORIES</div>
-      <div id="folderNav">
-        <div class="loading">Loading...</div>
+<main>
+  <div id="content">
+    <section class="hero">
+      <div class="eyebrow">Personal knowledge base</div>
+      <h1>Hi, I'm <span>tr4itor.</span></h1>
+      <p>
+        Welcome to my personal writeups collection.
+        Here I document my research, technical discoveries
+        and knowledge in cybersecurity.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="https://github.com/tr4itor">
+          GitHub Profile
+        </a>
+        <a class="btn" href="https://github.com/tr4itor/Writeups">
+          View Writeups
+        </a>
       </div>
-    </div>
-  </aside>
+    </section>
 
-  <main>
-    <div id="content">
-      <section class="hero">
-        <div class="eyebrow">Personal knowledge base</div>
-        <h1>Hi, I'm <span>tr4itor.</span></h1>
+    <section class="about">
+      <div class="section-head">
+        <h2>About me</h2>
+      </div>
+      <div class="about-card">
         <p>
-          Welcome to my personal writeups collection.
-          Here I document my research, technical discoveries
-          and knowledge in cybersecurity.
+          Hello! I'm <strong>tr4itor</strong>.
+          This website is my personal space for documenting
+          technical knowledge and research.
         </p>
-        <div class="hero-actions">
-          <a class="btn primary" href="https://github.com/tr4itor">
-            GitHub Profile
-          </a>
-          <a class="btn" href="https://github.com/tr4itor/Writeups">
-            View Writeups
-          </a>
-        </div>
-      </section>
+        <p>
+          I use this collection to organize writeups,
+          keep track of what I've learned and share
+          technical notes.
+        </p>
+      </div>
+    </section>
 
-      <section class="about">
-        <div class="section-head">
-          <h2>About me</h2>
-        </div>
-        <div class="about-card">
-          <p>
-            Hello! I'm <strong>tr4itor</strong>.
-            This website is my personal space for documenting
-            technical knowledge and research.
-          </p>
-          <p>
-            I use this collection to organize writeups,
-            keep track of what I've learned and share
-            technical notes.
-          </p>
-          <p>
-            The categories in the sidebar contain my writeups
-            and other materials.
-          </p>
-        </div>
-      </section>
-    </div>
+    <section class="categories">
+      <div class="section-head">
+        <h2>Categories</h2>
+        <small>GENERAL</small>
+      </div>
+      <p class="category-description">
+        Browse my writeups and technical notes.
+      </p>
+      <div class="cards" id="homeFolders">
+        <div class="loading">Loading categories...</div>
+      </div>
+    </section>
+  </div>
 
-    <footer>
-      <span>© 2026 tr4itor</span>
-      <span>Personal Writeups</span>
-    </footer>
-  </main>
-</div>
+  <footer>
+    <span>© 2026 tr4itor</span>
+    <span>Personal Writeups</span>
+  </footer>
+</main>
 
 <script>
 const OWNER = "tr4itor";
@@ -646,20 +551,7 @@ function escapeAttr(value) {
     .replace(/'/g, "\\'");
 }
 
-function setActive(button) {
-  document.querySelectorAll(".nav-item").forEach(el =>
-    el.classList.remove("active")
-  );
-  if (button) button.classList.add("active");
-}
-
-function toggleMenu() {
-  document.getElementById("sidebar").classList.toggle("open");
-}
-
 function showHome() {
-  setActive(document.getElementById("homeNav"));
-
   document.getElementById("content").innerHTML = `
     <section class="hero">
       <div class="eyebrow">Personal knowledge base</div>
@@ -692,41 +584,53 @@ function showHome() {
           keep track of what I've learned and share
           technical notes.
         </p>
-        <p>
-          The categories in the sidebar contain my writeups
-          and other materials.
-        </p>
       </div>
     </section>
+
+    <section class="categories">
+      <div class="section-head">
+        <h2>Categories</h2>
+        <small>GENERAL</small>
+      </div>
+      <p class="category-description">
+        Browse my writeups and technical notes.
+      </p>
+      <div class="cards" id="homeFolders"></div>
+    </section>
   `;
+  renderHomeFolders();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderHomeFolders() {
+  const container = document.getElementById("homeFolders");
+  if (!container) return;
+
+  container.innerHTML = folders.length
+    ? folders.map(folder => `
+      <button class="card"
+        onclick="openFolder('${escapeAttr(folder.path)}')">
+        <div class="card-icon">#</div>
+        <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
+        <div class="card-description">Open category</div>
+      </button>
+    `).join("")
+    : `<div class="empty">No categories found.</div>`;
 }
 
 async function init() {
   try {
     const items = await api("general");
     folders = items.filter(item => item.type === "dir");
-
-    document.getElementById("folderNav").innerHTML =
-      folders.map(folder => `
-        <button class="nav-item"
-          onclick="openFolder('${escapeAttr(folder.path)}', this)">
-          <span class="nav-icon">▣</span>
-          ${escapeHtml(prettyName(folder.name))}
-        </button>
-      `).join("") ||
-      `<div class="empty">No categories found.</div>`;
-
+    renderHomeFolders();
   } catch (error) {
-    document.getElementById("folderNav").innerHTML =
+    document.getElementById("homeFolders").innerHTML =
       `<div class="empty">Unable to load categories.</div>`;
     console.error(error);
   }
 }
 
-async function openFolder(path, button) {
-  setActive(button);
-  document.getElementById("sidebar").classList.remove("open");
-
+async function openFolder(path) {
   document.getElementById("content").innerHTML =
     `<div class="loading">Loading directory...</div>`;
 
@@ -740,7 +644,7 @@ async function openFolder(path, button) {
 
     document.getElementById("content").innerHTML = `
       <div class="breadcrumb">
-        <button onclick="showHome()">About me</button>
+        <button onclick="showHome()">Home</button>
         <span>/</span>
         <span>${escapeHtml(prettyName(path.split("/").pop()))}</span>
       </div>
@@ -757,6 +661,7 @@ async function openFolder(path, button) {
     `;
 
     renderDirectory(dirs, files);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
     document.getElementById("content").innerHTML =
       `<div class="empty">Unable to load this directory.</div>`;
@@ -769,11 +674,12 @@ function renderDirectory(dirs, files) {
   if (!container) return;
 
   const dirHTML = dirs.map(folder => `
-    <div class="file-row"
+    <button class="card"
       onclick="openFolder('${escapeAttr(folder.path)}')">
-      <span class="file-icon">▣</span>
-      <span class="filename">${escapeHtml(prettyName(folder.name))}</span>
-    </div>
+      <div class="card-icon">#</div>
+      <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
+      <div class="card-description">Open folder</div>
+    </button>
   `).join("");
 
   const fileHTML = files.map(file => `
@@ -785,11 +691,12 @@ function renderDirectory(dirs, files) {
   `).join("");
 
   container.innerHTML = `
-    ${dirs.length ? `
-      <div class="file-list" style="margin-bottom:18px">
-        ${dirHTML}
-      </div>` : ""}
-    ${files.length ? `<div class="file-list">${fileHTML}</div>` : ""}
+    ${dirs.length
+      ? `<div class="cards" style="margin-bottom:18px">${dirHTML}</div>`
+      : ""}
+    ${files.length
+      ? `<div class="file-list">${fileHTML}</div>`
+      : ""}
     ${!dirs.length && !files.length
       ? `<div class="empty">This directory is empty.</div>`
       : ""}
@@ -798,14 +705,9 @@ function renderDirectory(dirs, files) {
 
 function filterFiles(query) {
   const q = query.toLowerCase();
-
   renderDirectory(
-    currentDirs.filter(file =>
-      file.name.toLowerCase().includes(q)
-    ),
-    currentFiles.filter(file =>
-      file.name.toLowerCase().includes(q)
-    )
+    currentDirs.filter(file => file.name.toLowerCase().includes(q)),
+    currentFiles.filter(file => file.name.toLowerCase().includes(q))
   );
 }
 
@@ -830,7 +732,7 @@ async function openFile(path) {
 
     document.getElementById("content").innerHTML = `
       <div class="breadcrumb">
-        <button onclick="showHome()">About me</button>
+        <button onclick="showHome()">Home</button>
         <span>/</span>
         <button onclick="openFolder('${escapeAttr(parent)}')">
           ${escapeHtml(prettyName(parent.split("/").pop()))}
@@ -855,6 +757,8 @@ async function openFile(path) {
     document.querySelectorAll(".reader pre code").forEach(block => {
       hljs.highlightElement(block);
     });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
     document.getElementById("content").innerHTML =
       `<div class="empty">Unable to open this file.</div>`;
