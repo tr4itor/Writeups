@@ -1,821 +1,784 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0f14">
-<title>Writeups | tr4itor</title>
-<meta name="description" content="Security research and technical writeups by tr4itor.">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writeups</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --bg: #050505;
+      --surface: #101010;
+      --surface-hover: #1a1a1a;
+      --text: #f5f5f5;
+      --muted: #a0a0a0;
+      --border: #fff;
+      --border-width: 3px;
+    }
 
-<style>
-:root {
-  --bg: #0b0f14;
-  --panel: #10161e;
-  --panel-hover: #151e28;
-  --border: #222c38;
-  --text: #e6edf3;
-  --muted: #8b98a7;
-  --green: #3fb950;
-  --green-dark: #238636;
-  --blue: #58a6ff;
-}
+    * {
+      box-sizing: border-box;
+    }
 
-* { box-sizing: border-box; }
+    html {
+      scroll-behavior: smooth;
+    }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, sans-serif;
-  font-size: 14px;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    }
 
-a { color: inherit; text-decoration: none; }
-button { font: inherit; }
+    button {
+      font: inherit;
+    }
 
-.topbar {
-  height: 64px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 30px;
-  background: rgba(11,15,20,.94);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  backdrop-filter: blur(16px);
-}
+    .container {
+      width: min(1100px, calc(100% - 40px));
+      margin: 0 auto;
+    }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 700;
-  font-size: 16px;
-}
+    /* Header */
 
-.logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: #14241b;
-  border: 1px solid #285b39;
-  color: var(--green);
-  display: grid;
-  place-items: center;
-  font: 600 18px "JetBrains Mono", monospace;
-}
+    .header {
+      padding: 28px 0;
+      border-bottom: var(--border-width) solid var(--border);
+    }
 
-.brand span {
-  color: var(--muted);
-  font-weight: 400;
-}
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
 
-.top-links {
-  display: flex;
-  gap: 22px;
-  color: var(--muted);
-  align-items: center;
-}
+    .logo {
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-decoration: none;
+    }
 
-.top-links a:hover { color: var(--text); }
+    .header-label {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
 
-.github-link {
-  border: 1px solid var(--border);
-  padding: 8px 13px;
-  border-radius: 8px;
-  color: var(--text);
-}
+    /* Hero */
 
-main {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 55px 30px 70px;
-}
+    .hero {
+      margin: 36px 0;
+      padding: 60px 48px;
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+    }
 
-.hero {
-  position: relative;
-  overflow: hidden;
-  padding: 55px 48px;
-  border: 1px solid #283b32;
-  border-radius: 15px;
-  background:
-    radial-gradient(ellipse at 90% 10%, #1b422a66, transparent 45%),
-    linear-gradient(135deg, #111c18, #10161e 65%);
-}
+    .hero h1 {
+      margin: 0 0 20px;
+      font-size: clamp(38px, 7vw, 76px);
+      line-height: 1;
+      letter-spacing: -4px;
+      font-weight: 900;
+    }
 
-.hero::after {
-  content: "</>";
-  position: absolute;
-  right: 40px;
-  top: 25px;
-  font: 800 90px "JetBrains Mono", monospace;
-  color: var(--green);
-  opacity: .08;
-  transform: rotate(-10deg);
-  pointer-events: none;
-}
+    .hero p {
+      max-width: 650px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+    }
 
-.eyebrow {
-  color: var(--green);
-  font: 500 11px "JetBrains Mono", monospace;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-}
+    /* Sections */
 
-.hero h1 {
-  font-size: clamp(32px, 5vw, 49px);
-  line-height: 1.15;
-  letter-spacing: -1.8px;
-  margin: 19px 0 17px;
-}
+    .section {
+      margin: 52px 0;
+    }
 
-.hero h1 span { color: var(--green); }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
 
-.hero p {
-  max-width: 550px;
-  color: #a3b0bc;
-  font-size: 14px;
-  line-height: 1.9;
-  margin: 0;
-}
+    .section-heading h2 {
+      margin: 0;
+      font-size: 27px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
 
-.hero-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 27px;
-  flex-wrap: wrap;
-}
+    /* Cards */
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  background: #171e27;
-  color: var(--text);
-  cursor: pointer;
-  transition: .15s;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
 
-.btn.primary {
-  background: var(--green-dark);
-  border-color: #299447;
-  color: white;
-}
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-height: 160px;
+      padding: 24px;
+      color: var(--text);
+      text-align: left;
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
 
-.btn:hover {
-  filter: brightness(1.15);
-}
+    .card:hover {
+      background: var(--surface-hover);
+      transform: translateY(-3px);
+    }
 
-.btn.back {
-  background: var(--panel);
-  margin-bottom: 22px;
-}
+    .card:focus-visible,
+    button:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 5px;
+    }
 
-.about {
-  margin-top: 35px;
-}
+    .card-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border: var(--border-width) solid var(--border);
+      color: #fff;
+      font-size: 21px;
+      font-weight: 800;
+    }
 
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  margin: 0 0 18px;
-}
+    .card-title {
+      font-size: 18px;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
 
-.section-head h2 {
-  font-size: 18px;
-  margin: 0;
-  letter-spacing: -.3px;
-}
+    .card-description {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
 
-.section-head small {
-  color: var(--muted);
-  font-size: 11px;
-}
+    /* Navigation and buttons */
 
-.about-card {
-  padding: 23px 25px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 11px;
-  line-height: 1.8;
-  color: #a3b0bc;
-}
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin: 36px 0 24px;
+    }
 
-.about-card p { margin: 0 0 12px; }
-.about-card p:last-child { margin-bottom: 0; }
-.about-card strong { color: var(--text); }
+    .breadcrumbs {
+      color: var(--muted);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
 
-.categories {
-  margin-top: 48px;
-}
+    .back-button,
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 18px;
+      color: #fff;
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      font-weight: 750;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
 
-.category-description {
-  color: var(--muted);
-  font-size: 12px;
-  margin: -8px 0 20px;
-}
+    .back-button:hover,
+    .action-button:hover {
+      background: var(--surface-hover);
+    }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-}
+    /* File list */
 
-.card {
-  display: block;
-  width: 100%;
-  text-align: left;
-  color: var(--text);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
-  min-height: 130px;
-  cursor: pointer;
-  transition: .2s ease;
-}
+    .file-list {
+      display: grid;
+      gap: 14px;
+    }
 
-.card:hover {
-  transform: translateY(-3px);
-  border-color: #3b8050;
-  background: var(--panel-hover);
-}
+    .file-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      padding: 18px 20px;
+      color: var(--text);
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
 
-.card-icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  border: 1px solid #285b39;
-  background: #14241b;
-  color: var(--green);
-  font: 600 17px "JetBrains Mono", monospace;
-  margin-bottom: 16px;
-}
+    .file-card:hover {
+      background: var(--surface-hover);
+    }
 
-.card-title {
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 7px;
-  overflow-wrap: anywhere;
-}
+    .file-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 42px;
+      width: 42px;
+      height: 42px;
+      border: var(--border-width) solid var(--border);
+      font-size: 20px;
+      font-weight: 800;
+    }
 
-.card-description {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
-}
+    .file-info {
+      min-width: 0;
+    }
 
-.search {
-  width: 100%;
-  padding: 12px 14px;
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  outline: none;
-  border-radius: 8px;
-  margin-bottom: 18px;
-}
+    .file-name {
+      display: block;
+      font-size: 15px;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
 
-.search:focus { border-color: #3d8b55; }
-.search::placeholder { color: #687584; }
+    .file-type {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
 
-.file-list {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--panel);
-}
+    /* Markdown content */
 
-.file-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 17px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  min-width: 0;
-}
+    .content {
+      margin: 28px 0 60px;
+      padding: 36px;
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      border-radius: 0;
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+    }
 
-.file-row:last-child { border-bottom: 0; }
-.file-row:hover { background: var(--panel-hover); }
-.file-row:hover .filename { color: var(--green); }
+    .content h1,
+    .content h2,
+    .content h3,
+    .content h4 {
+      color: #fff;
+      line-height: 1.3;
+    }
 
-.file-icon {
-  color: var(--green);
-  font: 600 14px "JetBrains Mono", monospace;
-  min-width: 16px;
-}
+    .content h1 {
+      padding-bottom: 14px;
+      border-bottom: 2px solid #fff;
+    }
 
-.filename {
-  overflow-wrap: anywhere;
-  color: var(--text);
-}
+    .content h2 {
+      margin-top: 36px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #fff;
+    }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 9px;
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 25px;
-}
+    .content a {
+      color: #fff;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
 
-.breadcrumb button {
-  color: var(--blue);
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-}
+    .content img {
+      max-width: 100%;
+      height: auto;
+      border: 2px solid #fff;
+    }
 
-.breadcrumb button:hover { text-decoration: underline; }
+    .content pre {
+      padding: 20px;
+      background: #050505;
+      border: 2px solid #fff;
+      overflow-x: auto;
+    }
 
-.reader {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: clamp(20px, 4vw, 40px);
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
+    .content code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
 
-.reader h1, .reader h2, .reader h3 {
-  line-height: 1.35;
-  margin-top: 1.5em;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
-}
+    .content :not(pre) > code {
+      padding: 2px 6px;
+      background: #222;
+      border: 1px solid #fff;
+    }
 
-.reader h1:first-child { margin-top: 0; }
-.reader p, .reader li { color: #b8c2ce; }
-.reader a { color: var(--blue); text-decoration: underline; }
-.reader img { max-width: 100%; border-radius: 8px; }
+    .content blockquote {
+      margin-left: 0;
+      padding: 4px 20px;
+      border-left: 4px solid #fff;
+      color: var(--muted);
+    }
 
-.reader pre {
-  overflow-x: auto;
-  padding: 16px;
-  background: #080d12;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font: 12px "JetBrains Mono", monospace;
-}
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      display: block;
+      overflow-x: auto;
+    }
 
-.reader code {
-  font-family: "JetBrains Mono", monospace;
-  font-size: .9em;
-}
+    .content th,
+    .content td {
+      padding: 10px 14px;
+      border: 2px solid #fff;
+      text-align: left;
+    }
 
-.reader :not(pre) > code {
-  background: #1b2731;
-  color: #79d997;
-  padding: 2px 5px;
-  border-radius: 4px;
-}
+    .content th {
+      background: #222;
+    }
 
-.reader blockquote {
-  margin: 15px 0;
-  padding: 5px 15px;
-  border-left: 3px solid var(--green);
-  color: var(--muted);
-  background: #131c21;
-}
+    .content hr {
+      border: 0;
+      border-top: 2px solid #fff;
+      margin: 30px 0;
+    }
 
-.empty {
-  color: var(--muted);
-  padding: 35px;
-  text-align: center;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-}
+    /* Status messages */
 
-.loading {
-  color: var(--muted);
-  padding: 30px 0;
-  font: 12px "JetBrains Mono", monospace;
-}
+    .message {
+      padding: 24px;
+      background: var(--surface);
+      border: var(--border-width) solid var(--border);
+      color: var(--muted);
+      line-height: 1.6;
+    }
 
-footer {
-  border-top: 1px solid var(--border);
-  margin-top: 55px;
-  padding-top: 18px;
-  color: #687584;
-  font-size: 11px;
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-}
+    .error {
+      color: #fff;
+    }
 
-@media (max-width: 600px) {
-  main { padding: 25px 18px 50px; }
-  .topbar { padding: 0 18px; }
-  .hero { padding: 35px 25px; }
-  .hero::after { right: 12px; font-size: 60px; }
-  .hero h1 { letter-spacing: -1px; }
-  .cards { grid-template-columns: 1fr 1fr; }
-  .top-links { gap: 12px; }
-  .top-links a:first-child { display: none; }
-}
+    .hidden {
+      display: none !important;
+    }
 
-@media (max-width: 380px) {
-  .cards { grid-template-columns: 1fr; }
-}
-</style>
+    /* Footer */
+
+    .footer {
+      margin-top: 70px;
+      padding: 28px 0;
+      border-top: var(--border-width) solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width: min(100% - 28px, 1100px);
+      }
+
+      .hero {
+        padding: 38px 24px;
+      }
+
+      .hero h1 {
+        letter-spacing: -2px;
+      }
+
+      .content {
+        padding: 22px;
+      }
+
+      .header-label {
+        font-size: 11px;
+      }
+
+      .section-heading h2 {
+        font-size: 23px;
+      }
+    }
+  </style>
 </head>
 
 <body>
-<header class="topbar">
-  <div class="brand">
-    <div class="logo">T</div>
-    tr4itor <span>/ Writeups</span>
-  </div>
-
-  <nav class="top-links">
-    <a href="https://github.com/tr4itor">GitHub Profile</a>
-    <a class="github-link" href="https://github.com/tr4itor/Writeups">
-      GitHub
-    </a>
-  </nav>
-</header>
-
-<main>
-  <div id="content">
-    <section class="hero">
-      <div class="eyebrow">Personal knowledge base</div>
-      <h1>Hi, I'm <span>tr4itor.</span></h1>
-      <p>
-        Welcome to my personal writeups collection.
-        Here I document my research, technical discoveries
-        and knowledge in cybersecurity.
-      </p>
-      <div class="hero-actions">
-        <a class="btn primary" href="https://github.com/tr4itor">
-          GitHub Profile
-        </a>
-        <a class="btn" href="https://github.com/tr4itor/Writeups">
-          View Writeups
-        </a>
-      </div>
-    </section>
-
-    <section class="about">
-      <div class="section-head">
-        <h2>About me</h2>
-      </div>
-      <div class="about-card">
-        <p>
-          Hello! I'm <strong>tr4itor</strong>.
-          This website is my personal space for documenting
-          technical knowledge and research.
-        </p>
-        <p>
-          I use this collection to organize writeups,
-          keep track of what I've learned and share
-          technical notes.
-        </p>
-      </div>
-    </section>
-
-    <section class="categories">
-      <div class="section-head">
-        <h2>Categories</h2>
-        <small>GENERAL</small>
-      </div>
-      <p class="category-description">
-        Browse my writeups and technical notes.
-      </p>
-      <div class="cards" id="homeFolders">
-        <div class="loading">Loading categories...</div>
-      </div>
-    </section>
-  </div>
-
-  <footer>
-    <span>© 2026 tr4itor</span>
-    <span>Personal Writeups</span>
-  </footer>
-</main>
-
-<script>
-const OWNER = "tr4itor";
-const REPO = "Writeups";
-const BRANCH = "main";
-const BASE = `https://api.github.com/repos/${OWNER}/${REPO}/contents`;
-const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
-
-let folders = [];
-let currentDirs = [];
-let currentFiles = [];
-let navigation = [];
-
-async function api(path = "") {
-  const response = await fetch(`${BASE}/${path}?ref=${BRANCH}`);
-  if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status}`);
-  }
-  return response.json();
-}
-
-function prettyName(name) {
-  return name
-    .replace(/\.md$/i, "")
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[c]);
-}
-
-function escapeAttr(value) {
-  return String(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'");
-}
-
-function saveNavigation(type, path = "") {
-  navigation.push({ type, path });
-}
-
-function goBack() {
-  if (navigation.length > 1) {
-    navigation.pop();
-    const previous = navigation[navigation.length - 1];
-    renderPage(previous, false);
-  } else {
-    showHome();
-  }
-}
-
-function showHome() {
-  navigation = [{ type: "home", path: "" }];
-  renderHome();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function renderHome() {
-  document.getElementById("content").innerHTML = `
-    <section class="hero">
-      <div class="eyebrow">Personal knowledge base</div>
-      <h1>Hi, I'm <span>tr4itor.</span></h1>
-      <p>
-        Welcome to my personal writeups collection.
-        Here I document my research, technical discoveries
-        and knowledge in cybersecurity.
-      </p>
-      <div class="hero-actions">
-        <a class="btn primary" href="https://github.com/tr4itor">
-          GitHub Profile
-        </a>
-        <a class="btn" href="https://github.com/tr4itor/Writeups">
-          View Writeups
-        </a>
-      </div>
-    </section>
-
-    <section class="about">
-      <div class="section-head"><h2>About me</h2></div>
-      <div class="about-card">
-        <p>
-          Hello! I'm <strong>tr4itor</strong>.
-          This website is my personal space for documenting
-          technical knowledge and research.
-        </p>
-        <p>
-          I use this collection to organize writeups,
-          keep track of what I've learned and share
-          technical notes.
-        </p>
-      </div>
-    </section>
-
-    <section class="categories">
-      <div class="section-head">
-        <h2>Categories</h2>
-        <small>GENERAL</small>
-      </div>
-      <p class="category-description">
-        Browse my writeups and technical notes.
-      </p>
-      <div class="cards" id="homeFolders"></div>
-    </section>
-  `;
-  renderHomeFolders();
-}
-
-function renderHomeFolders() {
-  const container = document.getElementById("homeFolders");
-  if (!container) return;
-
-  container.innerHTML = folders.length
-    ? folders.map(folder => `
-      <button class="card"
-        onclick="openFolder('${escapeAttr(folder.path)}')">
-        <div class="card-icon">$</div>
-        <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
-        <div class="card-description">Open category</div>
-      </button>
-    `).join("")
-    : `<div class="empty">No categories found.</div>`;
-}
-
-async function init() {
-  try {
-    const items = await api("general");
-    folders = items.filter(item => item.type === "dir");
-    renderHomeFolders();
-  } catch (error) {
-    document.getElementById("homeFolders").innerHTML =
-      `<div class="empty">Unable to load categories.</div>`;
-    console.error(error);
-  }
-}
-
-async function openFolder(path, addHistory = true) {
-  if (addHistory) saveNavigation("folder", path);
-
-  document.getElementById("content").innerHTML =
-    `<button class="btn back" onclick="goBack()">Back</button>
-     <div class="loading">Loading directory...</div>`;
-
-  try {
-    const items = await api(path);
-    const dirs = items.filter(item => item.type === "dir");
-    const files = items.filter(item => item.type === "file");
-
-    currentDirs = dirs;
-    currentFiles = files;
-
-    document.getElementById("content").innerHTML = `
-      <button class="btn back" onclick="goBack()">Back</button>
-
-      <div class="breadcrumb">
-        <span>General</span>
-        <span>/</span>
-        <span>${escapeHtml(prettyName(path.split("/").pop()))}</span>
-      </div>
-
-      <div class="section-head">
-        <h2>${escapeHtml(prettyName(path.split("/").pop()))}</h2>
-      </div>
-
-      <input class="search"
-        placeholder="Search files..."
-        oninput="filterFiles(this.value)">
-
-      <div id="directoryResults"></div>
-    `;
-
-    renderDirectory(dirs, files);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch (error) {
-    document.getElementById("content").innerHTML = `
-      <button class="btn back" onclick="goBack()">Back</button>
-      <div class="empty">Unable to load this directory.</div>
-    `;
-    console.error(error);
-  }
-}
-
-function renderDirectory(dirs, files) {
-  const container = document.getElementById("directoryResults");
-  if (!container) return;
-
-  const dirHTML = dirs.map(folder => `
-    <button class="card"
-      onclick="openFolder('${escapeAttr(folder.path)}')">
-      <div class="card-icon">$</div>
-      <div class="card-title">${escapeHtml(prettyName(folder.name))}</div>
-      <div class="card-description">Open folder</div>
-    </button>
-  `).join("");
-
-  const fileHTML = files.map(file => `
-    <div class="file-row"
-      onclick="openFile('${escapeAttr(file.path)}')">
-      <span class="file-icon">$</span>
-      <span class="filename">${escapeHtml(file.name)}</span>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="#" id="home-link">WRITEUPS</a>
+      <span class="header-label">Knowledge base</span>
     </div>
-  `).join("");
+  </header>
 
-  container.innerHTML = `
-    ${dirs.length
-      ? `<div class="cards" style="margin-bottom:18px">${dirHTML}</div>`
-      : ""}
-    ${files.length
-      ? `<div class="file-list">${fileHTML}</div>`
-      : ""}
-    ${!dirs.length && !files.length
-      ? `<div class="empty">This directory is empty.</div>`
-      : ""}
-  `;
-}
+  <main class="container">
+    <section class="hero" id="hero">
+      <h1>Writeups.</h1>
+      <p>
+        A collection of writeups, notes, and research.
+        Explore the topics and open the materials.
+      </p>
+    </section>
 
-function filterFiles(query) {
-  const q = query.toLowerCase();
-  renderDirectory(
-    currentDirs.filter(file => file.name.toLowerCase().includes(q)),
-    currentFiles.filter(file => file.name.toLowerCase().includes(q))
-  );
-}
+    <section class="section" id="categories-section">
+      <div class="section-heading">
+        <h2>Categories</h2>
+      </div>
+      <div class="grid" id="categories"></div>
+    </section>
 
-async function openFile(path, addHistory = true) {
-  if (addHistory) saveNavigation("file", path);
-
-  document.getElementById("content").innerHTML = `
-    <button class="btn back" onclick="goBack()">Back</button>
-    <div class="loading">Loading writeup...</div>
-  `;
-
-  try {
-    const url = `${RAW}/${path.split("/")
-      .map(encodeURIComponent).join("/")}`;
-
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Could not fetch file");
-
-    const markdown = await response.text();
-    const html = marked.parse(markdown, {
-      gfm: true,
-      breaks: false
-    });
-
-    const parent = path.split("/").slice(0, -1).join("/");
-
-    document.getElementById("content").innerHTML = `
-      <button class="btn back" onclick="goBack()">Back</button>
-
-      <div class="breadcrumb">
-        <span>General</span>
-        <span>/</span>
-        <span>${escapeHtml(prettyName(parent.split("/").pop()))}</span>
-        <span>/</span>
-        <span>${escapeHtml(path.split("/").pop())}</span>
+    <section class="section hidden" id="browser-section">
+      <div class="toolbar">
+        <button class="back-button" id="back-button" type="button">
+          Back
+        </button>
+        <div class="breadcrumbs" id="breadcrumbs"></div>
       </div>
 
-      <div class="section-head">
-        <h2>${escapeHtml(prettyName(path.split("/").pop()))}</h2>
-        <a class="btn"
-          href="https://github.com/${OWNER}/${REPO}/blob/${BRANCH}/${path.split("/")
-            .map(encodeURIComponent).join("/")}"
-          target="_blank" rel="noopener">
-          View source
-        </a>
+      <div class="section-heading">
+        <h2 id="page-title"></h2>
       </div>
 
-      <article class="reader">${html}</article>
-    `;
+      <div id="items" class="file-list"></div>
+      <div id="page-message" class="message hidden"></div>
+    </section>
 
-    document.querySelectorAll(".reader pre code").forEach(block => {
-      hljs.highlightElement(block);
+    <section class="section hidden" id="reader-section">
+      <div class="toolbar">
+        <button class="back-button" id="reader-back-button" type="button">
+          Back
+        </button>
+        <div class="breadcrumbs" id="reader-breadcrumbs"></div>
+      </div>
+
+      <article class="content" id="markdown-content"></article>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      Writeups
+    </div>
+  </footer>
+
+  <script>
+    const OWNER = "tr4itor";
+    const REPOSITORY = "Writeups";
+    const BRANCH = "main";
+    const ROOT_DIRECTORY = "general";
+
+    const API_BASE =
+      `https://api.github.com/repos/${OWNER}/${REPOSITORY}/contents`;
+
+    const RAW_BASE =
+      `https://raw.githubusercontent.com/${OWNER}/${REPOSITORY}/${BRANCH}`;
+
+    const categoriesElement = document.getElementById("categories");
+    const browserSection = document.getElementById("browser-section");
+    const readerSection = document.getElementById("reader-section");
+    const categoriesSection = document.getElementById("categories-section");
+    const hero = document.getElementById("hero");
+
+    const itemsElement = document.getElementById("items");
+    const pageTitle = document.getElementById("page-title");
+    const breadcrumbs = document.getElementById("breadcrumbs");
+    const readerBreadcrumbs = document.getElementById("reader-breadcrumbs");
+    const markdownContent = document.getElementById("markdown-content");
+    const pageMessage = document.getElementById("page-message");
+
+    const backButton = document.getElementById("back-button");
+    const readerBackButton = document.getElementById("reader-back-button");
+
+    let navigation = [];
+    let currentPage = null;
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]);
+    }
+
+    function getName(path) {
+      return path.split("/").filter(Boolean).pop() || path;
+    }
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.classList.remove("hidden");
+      pageMessage.classList.toggle("error", isError);
+    }
+
+    function hideMessage() {
+      pageMessage.classList.add("hidden");
+      pageMessage.classList.remove("error");
+    }
+
+    function showHome() {
+      currentPage = null;
+      navigation = [];
+
+      hero.classList.remove("hidden");
+      categoriesSection.classList.remove("hidden");
+      browserSection.classList.add("hidden");
+      readerSection.classList.add("hidden");
+    }
+
+    function setInnerPage() {
+      hero.classList.add("hidden");
+      categoriesSection.classList.add("hidden");
+      browserSection.classList.remove("hidden");
+      readerSection.classList.add("hidden");
+    }
+
+    function setReaderPage() {
+      hero.classList.add("hidden");
+      categoriesSection.classList.add("hidden");
+      browserSection.classList.add("hidden");
+      readerSection.classList.remove("hidden");
+    }
+
+    function updateBreadcrumb(path) {
+      breadcrumbs.textContent = path
+        .replace(`${ROOT_DIRECTORY}/`, "")
+        .replaceAll("/", " / ");
+    }
+
+    function updateReaderBreadcrumb(path) {
+      readerBreadcrumbs.textContent = path
+        .replace(`${ROOT_DIRECTORY}/`, "")
+        .replaceAll("/", " / ");
+    }
+
+    async function fetchDirectory(path) {
+      const response = await fetch(
+        `${API_BASE}/${path.split("/").map(encodeURIComponent).join("/")}?ref=${BRANCH}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    function createCard(item) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "card";
+
+      const icon = document.createElement("span");
+      icon.className = "card-icon";
+      icon.textContent = item.type === "dir" ? "＋" : "$";
+
+      const title = document.createElement("span");
+      title.className = "card-title";
+      title.textContent = item.name;
+
+      const description = document.createElement("span");
+      description.className = "card-description";
+      description.textContent =
+        item.type === "dir" ? "Open category" : "Open file";
+
+      button.append(icon, title, description);
+
+      button.addEventListener("click", () => {
+        if (item.type === "dir") {
+          openFolder(item.path);
+        } else {
+          openFile(item.path);
+        }
+      });
+
+      return button;
+    }
+
+    async function loadCategories() {
+      categoriesElement.innerHTML = `
+        <div class="message">Loading categories...</div>
+      `;
+
+      try {
+        const contents = await fetchDirectory(ROOT_DIRECTORY);
+        const folders = contents.filter(item => item.type === "dir");
+
+        categoriesElement.innerHTML = "";
+
+        if (!folders.length) {
+          categoriesElement.innerHTML =
+            '<div class="message">No categories found.</div>';
+          return;
+        }
+
+        folders.forEach(folder => {
+          categoriesElement.appendChild(createCard(folder));
+        });
+      } catch (error) {
+        categoriesElement.innerHTML = "";
+        const message = document.createElement("div");
+        message.className = "message error";
+        message.textContent =
+          "Could not load categories. Check the repository and branch settings.";
+        categoriesElement.appendChild(message);
+        console.error(error);
+      }
+    }
+
+    async function openFolder(path, addHistory = true) {
+      if (addHistory && currentPage) {
+        navigation.push(currentPage);
+      } else if (addHistory && !currentPage) {
+        navigation.push({ type: "home" });
+      }
+
+      currentPage = { type: "folder", path };
+      setInnerPage();
+      hideMessage();
+
+      pageTitle.textContent = getName(path);
+      updateBreadcrumb(path);
+      itemsElement.innerHTML = '<div class="message">Loading...</div>';
+
+      try {
+        const contents = await fetchDirectory(path);
+        itemsElement.innerHTML = "";
+
+        const sorted = contents.slice().sort((a, b) => {
+          if (a.type !== b.type) {
+            return a.type === "dir" ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        if (!sorted.length) {
+          showMessage("This folder is empty.");
+          return;
+        }
+
+        sorted.forEach(item => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "file-card";
+
+          const icon = document.createElement("span");
+          icon.className = "file-icon";
+          icon.textContent = item.type === "dir" ? "＋" : "$";
+
+          const info = document.createElement("span");
+          info.className = "file-info";
+
+          const name = document.createElement("span");
+          name.className = "file-name";
+          name.textContent = item.name;
+
+          const type = document.createElement("span");
+          type.className = "file-type";
+          type.textContent = item.type === "dir" ? "Folder" : "File";
+
+          info.append(name, type);
+          row.append(icon, info);
+
+          row.addEventListener("click", () => {
+            if (item.type === "dir") {
+              openFolder(item.path);
+            } else {
+              openFile(item.path);
+            }
+          });
+
+          itemsElement.appendChild(row);
+        });
+      } catch (error) {
+        itemsElement.innerHTML = "";
+        showMessage(
+          "Could not load this folder. Make sure it exists and is publicly accessible.",
+          true
+        );
+        console.error(error);
+      }
+    }
+
+    async function openFile(path, addHistory = true) {
+      if (addHistory && currentPage) {
+        navigation.push(currentPage);
+      }
+
+      currentPage = { type: "file", path };
+      setReaderPage();
+      updateReaderBreadcrumb(path);
+      markdownContent.innerHTML = "<p>Loading...</p>";
+
+      try {
+        const response = await fetch(
+          `${RAW_BASE}/${path.split("/").map(encodeURIComponent).join("/")}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`File request failed: ${response.status}`);
+        }
+
+        const markdown = await response.text();
+
+        markdownContent.innerHTML = marked.parse(markdown);
+
+        markdownContent.querySelectorAll("a").forEach(link => {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        });
+      } catch (error) {
+        markdownContent.textContent =
+          "Could not load this file. Please check that it exists.";
+        console.error(error);
+      }
+    }
+
+    function goBack() {
+      if (!navigation.length) {
+        showHome();
+        return;
+      }
+
+      const previous = navigation.pop();
+
+      if (previous.type === "home") {
+        showHome();
+      } else if (previous.type === "folder") {
+        openFolder(previous.path, false);
+      } else if (previous.type === "file") {
+        openFile(previous.path, false);
+      } else {
+        showHome();
+      }
+    }
+
+    backButton.addEventListener("click", goBack);
+    readerBackButton.addEventListener("click", goBack);
+
+    document.getElementById("home-link").addEventListener("click", event => {
+      event.preventDefault();
+      showHome();
     });
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch (error) {
-    document.getElementById("content").innerHTML = `
-      <button class="btn back" onclick="goBack()">Back</button>
-      <div class="empty">Unable to open this file.</div>
-    `;
-    console.error(error);
-  }
-}
-
-async function renderPage(page, addHistory = false) {
-  if (page.type === "home") {
-    renderHome();
-  } else if (page.type === "folder") {
-    await openFolder(page.path, addHistory);
-  } else if (page.type === "file") {
-    await openFile(page.path, addHistory);
-  }
-}
-
-init();
-</script>
+    loadCategories();
+  </script>
 </body>
 </html>
