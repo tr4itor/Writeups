@@ -1,34 +1,35 @@
-**Теги:** OSINR, Web.
+**Теги:** OSINT, Web.
 
-**Сложность:** Easy.
-### 1. Загружаем изображение брошюры
-В архиве был файл **thebrochure.png**. 
+**Складність:** Easy.
 
-### 2. Находим скрытый аккаунт Instagram
+### 1. Завантажуємо зображення брошури
+В архіві був файл **thebrochure.png**. 
+
+### 2. Знаходимо прихований акаунт Instagram
 **Команда:**  
-Смотрим на изображение брошюры  — там есть текст «Find us on Instagram».
+Дивимося на зображення брошури — там є текст «Find us on Instagram».
 
 **Результат:**  
-Аккаунт — https://www.instagram.com/thebytelotusresort
+Акаунт — https://www.instagram.com/thebytelotusresort
 
-### 3. Ищем скрытую связь
-В этом аккаунте единственный аккаунт, на который подписаны — https://www.instagram.com/veratheconcierge 
+### 3. Шукаємо прихований зв’язок
+У цього акаунта єдина підписка — https://www.instagram.com/veratheconcierge 
 
-### 4. Извлекаем флаг с помощью igviewer.net
-Открываем профиль через сервис https://igviewer.net/profile/veratheconcierge
+### 4. Витягуємо прапор за допомогою igviewer.net
+Відкриваємо профіль через сервіс https://igviewer.net/profile/veratheconcierge
 
 **Результат:**  
-Только 3 поста.  
-Во всех трёх постах в описаниях — части **Base64** (закодировано по кусочкам)
+Лише 3 дописи.  
+В описах усіх трьох дописів — частини **Base64** (закодовано частинами)
 
-### 5. Склеиваем и декодируем B64
+### 5. Об’єднуємо та декодуємо B64
 ```
 echo "VEhNe1YzckBzX2FDQzB1bnRfaDRzX2IzM25fZjB1bmQhfQ==" | base64 -d
 ```
 
-**Вывод команды:**
+**Вивід команди:**
 ```
 THM{V3r@s_aCC0unt_h4s_b33n_f0und!}
 ```
 
-**Флаг найден!**
+**Прапор знайдено!**
