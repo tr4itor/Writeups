@@ -1,147 +1,149 @@
-**Теги:** Forensics, Windows, Cryptography.
-**Уровень**: Hard.
-## Описание
+**Tags:** Forensics, Windows, Cryptography.
 
-В этой комнате необходимо провести форензик-исследование Windows-машины и восстановить цепочку секретов, оставленных на компьютере.
+**Difficulty:** Hard.
 
-В собранном KAPE-образе находятся:
+## Description
 
-* реестровые ульи `SAM`, `SYSTEM` и `SECURITY`;
-* DPAPI masterkeys пользователя Веры;
-* профиль Google Chrome for Testing;
-* файлы `Local State` и `Login Data`;
-* файл `backup` размером 100 МБ в каталоге документов.
+In this room, we need to perform a forensic investigation of a Windows machine and recover a chain of secrets left on the computer.
 
-Главная задача — восстановить пароль, который Вера сохранила в браузере, использовать его для открытия зашифрованного контейнера VeraCrypt и найти внутри него флаг.
+The collected KAPE image contains:
 
-Ключевая сложность заключается в том, что необходимые данные разбросаны по нескольким уровням защиты Windows.
+* Windows Registry hives `SAM`, `SYSTEM`, and `SECURITY`;
+* DPAPI masterkeys belonging to Vera;
+* a Google Chrome for Testing profile;
+* `Local State` and `Login Data` files;
+* a 100 MB `backup` file in the Documents directory.
 
-## Цепочка решения
+The main task is to recover the password Vera saved in the browser, use it to open an encrypted VeraCrypt container, and find the flag inside.
 
-Весь путь можно представить следующим образом:
+The key difficulty is that the required data is spread across several layers of Windows protection.
+
+## Solution Chain
+
+The entire path can be represented as follows:
 
 ```text
 SAM + SYSTEM
       ↓
-NT-хэш пользователя Vera
+Vera's NT hash
       ↓
-Пароль Windows: minivera
+Windows password: minivera
       ↓
 DPAPI masterkey
       ↓
-Ключ шифрования Chrome
+Chrome encryption key
       ↓
-Сохранённый пароль Chrome
+Saved Chrome password
       ↓
-Пароль VeraCrypt
+VeraCrypt password
       ↓
-Контейнер backup
+backup container
       ↓
 PDF
       ↓
-Изображение внутри PDF
+Image inside PDF
       ↓
-Флаг
+Flag
 ```
 
-Файл `backup` сразу выглядит подозрительно: его размер составляет ровно `104857600` байт, содержимое имеет высокую энтропию, а стандартный magic header отсутствует.
+The `backup` file immediately looks suspicious: its size is exactly `104857600` bytes, its contents have high entropy, and the standard magic header is missing.
 
-Это характерно для зашифрованного контейнера. Дополнительная подсказка указывает на версию VeraCrypt `1.26.x`, что подтверждает направление поиска.
+This is characteristic of an encrypted container. An additional hint points to VeraCrypt version `1.26.x`, which confirms this direction.
 
 ---
 
-## 1. Получение NT-хэша Веры
+## 1. Obtaining Vera's NT Hash
 
-Начнём с ульев Windows Registry.
+Let's start with the Windows Registry hives.
 
-Переходим в каталог:
+Navigate to the directory:
 
 ```bash
 cd KAPE/C/Windows/System32/config
 ```
 
-Из `SAM` и `SYSTEM` извлекаем локальные учётные записи:
+Extract the local accounts from `SAM` and `SYSTEM`:
 
 ```bash
 impacket-secretsdump -sam SAM -system SYSTEM LOCAL
 ```
 
-В выводе находим пользователя `vera`:
+In the output, we find the user `vera`:
 
 ```text
 vera:1000:...:1241186a4aac4f34f4bf7ace71b396a8:::
 ```
 
-Полученный NT-хэш:
+The obtained NT hash:
 
 ```text
 1241186a4aac4f34f4bf7ace71b396a8
 ```
 
-Однако одного NT-хэша недостаточно для расшифровки локальных DPAPI masterkeys.
+However, the NT hash alone is not enough to decrypt the local DPAPI masterkeys.
 
 ---
 
-## 2. Восстановление пароля Windows
+## 2. Recovering the Windows Password
 
-Для локального DPAPI нам понадобится пароль пользователя.
+For local DPAPI, we need the user's password.
 
-Сохраняем NT-хэш в формате для John the Ripper:
+Save the NT hash in a format suitable for John the Ripper:
 
 ```bash
 echo 'vera:$NT$1241186a4aac4f34f4bf7ace71b396a8' > nt.john
 ```
 
-Запускаем перебор по `rockyou.txt`:
+Run a wordlist attack using `rockyou.txt`:
 
 ```bash
 john --format=nt --wordlist=/usr/share/wordlists/rockyou.txt nt.john
 ```
 
-John успешно восстанавливает пароль:
+John successfully recovers the password:
 
 ```text
 minivera
 ```
 
-Это пароль учётной записи Windows Веры. Пока это ещё не пароль от контейнера.
+This is Vera's Windows account password. It is not yet the password for the container.
 
 ---
 
-## 3. Расшифровка DPAPI masterkey
+## 3. Decrypting the DPAPI Masterkey
 
-Возвращаемся в корень KAPE-образа:
+Return to the root of the KAPE image:
 
 ```bash
 cd ../../../../..
 ```
 
-Находим DPAPI masterkey пользователя:
+Locate the user's DPAPI masterkey:
 
 ```text
 C/Users/vera/AppData/Roaming/Microsoft/Protect/S-1-5-21-2529683458-431225740-1723070931-1000/c90719ef-5b98-474e-b934-136d606a702a
 ```
 
-Задаём путь к masterkey и SID пользователя:
+Set the path to the masterkey and the user's SID:
 
 ```bash
 MK="C/Users/vera/AppData/Roaming/Microsoft/Protect/S-1-5-21-2529683458-431225740-1723070931-1000/c90719ef-5b98-474e-b934-136d606a702a"
 SID="S-1-5-21-2529683458-431225740-1723070931-1000"
 ```
 
-Теперь используем `impacket-dpapi`:
+Now use `impacket-dpapi`:
 
 ```bash
 impacket-dpapi masterkey -file "$MK" -sid "$SID" -password minivera
 ```
 
-Masterkey успешно расшифровывается:
+The masterkey is successfully decrypted:
 
 ```text
 Decrypted key: 0x5e5715ec...9d40
 ```
 
-Полное значение ключа:
+Full key value:
 
 ```text
 5e5715ec9b6df5a86e97902692a66d28e691f05d5bc1e04d0159cfe960e94c978c07e5004a0179d3a96df2468885a28175b0b02cc064445f116a752d2b3e9d40
@@ -149,37 +151,37 @@ Decrypted key: 0x5e5715ec...9d40
 
 ---
 
-## 4. Извлечение сохранённого пароля из Chrome
+## 4. Extracting the Saved Password from Chrome
 
-Теперь переходим к Chrome.
+Now we move on to Chrome.
 
-Сохранённые учётные данные находятся в SQLite-базе:
+Saved credentials are stored in the SQLite database:
 
 ```text
 C/Users/vera/AppData/Local/Google/Chrome For Testing/User Data/Default/Login Data
 ```
 
-Копируем её во временный каталог:
+Copy it to a temporary directory:
 
 ```bash
 cp "C/Users/vera/AppData/Local/Google/Chrome For Testing/User Data/Default/Login Data" /tmp/LoginData
 ```
 
-Сам ключ шифрования Chrome находится в файле:
+The Chrome encryption key is stored in:
 
 ```text
 C/Users/vera/AppData/Local/Google/Chrome For Testing/User Data/Local State
 ```
 
-В нём нас интересует:
+The value we are interested in is:
 
 ```text
 os_crypt.encrypted_key
 ```
 
-Этот ключ дополнительно защищён Windows DPAPI. Поэтому сначала используем уже полученный masterkey.
+This key is additionally protected by Windows DPAPI. Therefore, we first use the masterkey we obtained earlier.
 
-Для расшифровки можно воспользоваться следующим Python-скриптом:
+The following Python script can be used for decryption:
 
 ```python
 import json, base64, sqlite3
@@ -216,57 +218,57 @@ for origin, user, pw in sqlite3.connect('/tmp/LoginData').execute(
         )
 ```
 
-Получаем:
+We get:
 
 ```text
 VeraSecretVault => Wh4t1sV3raD0inG0nTh1sH0st
 ```
 
-Таким образом, мы наконец получили пароль от следующего этапа — контейнера VeraCrypt.
+Thus, we finally have the password for the next stage — the VeraCrypt container.
 
 ---
 
-## 5. Открытие контейнера VeraCrypt
+## 5. Opening the VeraCrypt Container
 
-Файл:
+The file:
 
 ```text
 C/Users/vera/Documents/backup
 ```
 
-является VeraCrypt-контейнером.
+is a VeraCrypt container.
 
-Открывать его через GUI необязательно. `cryptsetup` умеет работать с VeraCrypt-совместимыми контейнерами:
+It does not have to be opened through the GUI. `cryptsetup` can work with VeraCrypt-compatible containers:
 
 ```bash
 sudo cryptsetup open --type tcrypt --veracrypt "C/Users/vera/Documents/backup" veracnt
 ```
 
-В качестве passphrase используем:
+Use the following as the passphrase:
 
 ```text
 Wh4t1sV3raD0inG0nTh1sH0st
 ```
 
-Создаём точку монтирования:
+Create a mount point:
 
 ```bash
 sudo mkdir -p /mnt/vera
 ```
 
-Монтируем контейнер в режиме только для чтения:
+Mount the container in read-only mode:
 
 ```bash
 sudo mount -o ro /dev/mapper/veracnt /mnt/vera
 ```
 
-После открытия внутри обнаруживается каталог:
+After opening the container, we find the directory:
 
 ```text
 secret_financial_documents/
 ```
 
-В нём находятся:
+It contains:
 
 ```text
 transactions_q3.csv
@@ -275,25 +277,25 @@ important_invoice_byte_lotus.pdf
 
 ---
 
-## 6. Поиск флага в PDF
+## 6. Finding the Flag in the PDF
 
-Обычный `pdftotext` здесь не поможет, поскольку PDF является изображением, а не обычным текстовым документом.
+A regular `pdftotext` will not help here because the PDF contains an image rather than ordinary text.
 
-Поэтому извлекаем встроенные изображения:
+Therefore, extract the embedded images:
 
 ```bash
 pdfimages -all "/mnt/vera/secret_financial_documents/important_invoice_byte_lotus.pdf" /tmp/img
 ```
 
-После этого открываем полученное изображение:
+Then open the resulting image:
 
 ```text
 /tmp/img-000.png
 ```
 
-На изображении находится нужная строка с флагом.
+The required flag is visible in the image.
 
-## Флаг
+## Flag
 
 ```text
 THM{1t_w4s_V3r4_A11_Al0ng?!}
@@ -301,17 +303,17 @@ THM{1t_w4s_V3r4_A11_Al0ng?!}
 
 ---
 
-## Полный набор команд
+## Full Set of Commands
 
-Для удобства весь процесс:
+For convenience, the entire process:
 
 ```bash
 cd KAPE/C/Windows/System32/config
 
-# Получаем NT-хэш Vera
+# Get Vera's NT hash
 impacket-secretsdump -sam SAM -system SYSTEM LOCAL
 
-# Восстанавливаем пароль Windows
+# Recover the Windows password
 echo 'vera:$NT$1241186a4aac4f34f4bf7ace71b396a8' > nt.john
 john --format=nt --wordlist=/usr/share/wordlists/rockyou.txt nt.john
 
@@ -320,39 +322,39 @@ cd ../../../../..
 MK="C/Users/vera/AppData/Roaming/Microsoft/Protect/S-1-5-21-2529683458-431225740-1723070931-1000/c90719ef-5b98-474e-b934-136d606a702a"
 SID="S-1-5-21-2529683458-431225740-1723070931-1000"
 
-# Расшифровываем DPAPI masterkey
+# Decrypt the DPAPI masterkey
 impacket-dpapi masterkey -file "$MK" -sid "$SID" -password minivera
 
-# Копируем базу Chrome
+# Copy the Chrome database
 cp "C/Users/vera/AppData/Local/Google/Chrome For Testing/User Data/Default/Login Data" /tmp/LoginData
 
-# После получения Chrome AES key расшифровываем Login Data
+# After obtaining the Chrome AES key, decrypt Login Data
 # → VeraSecretVault => Wh4t1sV3raD0inG0nTh1sH0st
 
-# Открываем VeraCrypt-контейнер
+# Open the VeraCrypt container
 sudo cryptsetup open --type tcrypt --veracrypt \
     "C/Users/vera/Documents/backup" veracnt
 
 sudo mkdir -p /mnt/vera
 sudo mount -o ro /dev/mapper/veracnt /mnt/vera
 
-# Извлекаем изображения из PDF
+# Extract images from the PDF
 pdfimages -all \
     "/mnt/vera/secret_financial_documents/important_invoice_byte_lotus.pdf" \
     /tmp/img
 
-# Флаг находится в /tmp/img-000.png
+# The flag is located in /tmp/img-000.png
 # THM{1t_w4s_V3r4_A11_Al0ng?!}
 
-# Очистка
+# Cleanup
 sudo umount /mnt/vera
 sudo cryptsetup close veracnt
 ```
 
-## Что полезно запомнить
+## Key Takeaways
 
-* DPAPI-артефакты пользователя можно исследовать офлайн, если доступны masterkeys и необходимые данные для их расшифровки.
-* В Chrome цепочка в данном случае выглядит как `Local State → DPAPI → AES key → Login Data → AES-GCM`.
-* Файл без заголовка, с размером, кратным типичному размеру контейнера и высокой энтропией, стоит проверить на наличие зашифрованного контейнера.
-* Если `pdftotext` ничего не выводит, это ещё не означает, что PDF пустой: содержимое может находиться в виде встроенных изображений.
-* При работе с флагами стоит внимательно проверять leetspeak: `V3r4`, `Al0ng` и другие символы могут иметь значение.
+* DPAPI artifacts can be investigated offline if the masterkeys and the necessary data for decrypting them are available.
+* In this case, the Chrome chain is `Local State → DPAPI → AES key → Login Data → AES-GCM`.
+* A file without a header, with a size matching typical container sizes and high entropy, should be checked for an encrypted container.
+* If `pdftotext` produces no output, that does not necessarily mean the PDF is empty: the content may be stored as embedded images.
+* When working with flags, carefully check leetspeak: `V3r4`, `Al0ng`, and other substitutions may be significant.
